@@ -1,2 +1,12 @@
 *.agdai
 MAlonzo/**
+auto/
+latex/
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.ptb
+*.rel
+*.synctex.gz

@@ -195,7 +195,7 @@ language Agda, so that our development is transferrable to Haskell,
 either via compilation or via translation
 \cite{DBLP:conf/haskell/CockxME0N22}.
 
-\subsection{Finite nonbranching simple session types}
+\section{Finite nonbranching simple session types}
 \label{sec:finite-nonbr-simple}
 
 \input{latex/ST-finite-nonbranching.tex}
@@ -259,9 +259,9 @@ application logic by actions in a state monad over the application
 state $A$. We defer the shift to a monadic interface to the next step,
 when we have the full picture.
 
-Continuing our example, we define a command that implements a server
-for the protocol {\Abinaryp} with the binary operation instantiated to
-addition.
+Continuing our example, we define commands that implement a server
+for the protocols {\Abinaryp} and {\Aunaryp} with the operation instantiated to
+addition and negation, respectively.
 \stAddpCommand
 We use the variable $a$ for the application state and $x$ and $y$ for
 the value received from the channel.
@@ -289,11 +289,52 @@ structure. We need stack of monad transformers starting with a state
 monad for the application state on top a reader monad providing the
 channel on top of the IO monad. 
 
+\section{Selection and choice}
+\label{sec:select-choice}
+
+Adding branching to our development is straightforward. The standard
+theory allows branching on a finite set of labels using this syntax:
+\begin{align*}
+  S & ::= \dots \mid \oplus\{ \ell : S_\ell \mid \ell \in L \} \mid
+      \&\{\ell: S_\ell \mid \ell \in L\}
+\end{align*}
+The first alternative corresponds to an \emph{internal choice} of the program.
+The standard \texttt{select}
+primitive, which implements the internal choice, sends one of the labels,
+say $\ell \in L$, available in the type and continues according to $S_\ell$:
+\begin{align*}
+  \mathtt{select}\ \ell &: \oplus\{ \ell : S_\ell \mid \ell \in L \}
+                          \multimap S_\ell
+\end{align*}
+The second alternative corresponds to an \emph{external choice}. The
+corresponding primitive \texttt{branch} receives one of the labels
+mentioned in the types and chooses a continuation according to the
+label. In the presence of sum types, the primitive can be typed as
+follows \cite{DBLP:journals/toplas/Padovani19}.
+\begin{align*}
+  \mathtt{branch} &: \&\{\ell: S_\ell \mid \ell \in L\} \multimap +\{\ell: S_\ell \mid \ell \in L\}
+\end{align*}
+Here is the modeling in Agda, extending the definitions of
+{\ASession}, {\ACommand}, and {\Aexecutor}:
+\stBranchingType
+\stBranchingCommand
+\stBranchingExecutor
+
+Continuing our example, we define the type of an arithmetic server,
+which gives a choice between a binary operation and a unary one.
+\stExampleArithP
+The command for the server extends in the obvious way.
+\stArithpCommand
+
 
 \newpage
 
 \section{Discussion}
 \label{sec:discussion}
+
+\subsection{Command fragments}
+\label{sec:command-fragments}
+
 
 Instead of having commands indexed by session types, we could have
 \emph{command fragments} indexed by transformations of session types
@@ -303,6 +344,16 @@ guidance.
 
 Here is an example: (elaborate)
 
+\subsection{Selection and choice with vectors}
+\label{sec:select-choice-with}
+
+The reader may wonder why we do not define the constructors for
+selection and choice using vectors of length $n$, rather than
+functions from $\AFin~n$ (which is isomorphic). Using function extends
+straightforwardly to the definition of {\ACommand} where the {\ASession} index of the
+continuation command depends on the function argument $i : \AFin~n$.
+We would have to define a special vectors type to achieve similar
+expressivity. 
 
 %%
 %% The acknowledgments section is defined using the "acks" environment

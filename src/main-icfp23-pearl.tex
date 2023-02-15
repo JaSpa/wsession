@@ -209,6 +209,7 @@ A binary session type describes a bidirectional communication between two peers,
 let's call them server and client. The session type is attached to the
 type of the communication channel.
 \stFiniteType
+\stFiniteSession
 These types correspond to the standard grammar of session types, where
 $T$ is the type of payloads that can be transmitted and $S$ is the
 type of sessions. 
@@ -280,6 +281,7 @@ serialization, which can be addressed using type classes.
 
 The interpreter itself is defined by induction on the type
 {\ACommand}.
+\stExecutorSignature\vspace{-1.5\baselineskip}
 \stExecutor
 To actually run a server, it remains to provide a wrapper that accepts
 a connection and invokes the interpreter.
@@ -298,33 +300,51 @@ theory allows branching on a finite set of labels using this syntax:
   S & ::= \dots \mid \oplus\{ \ell : S_\ell \mid \ell \in L \} \mid
       \&\{\ell: S_\ell \mid \ell \in L\}
 \end{align*}
-The first alternative corresponds to an \emph{internal choice} of the program.
-The standard \texttt{select}
-primitive, which implements the internal choice, sends one of the labels,
-say $\ell \in L$, available in the type and continues according to $S_\ell$:
+Here $L$ is a finite set of labels, which can be chosen differently at
+every instance. 
+The first alternative corresponds to an \emph{internal choice} of the
+program.  The \texttt{select} primitive sends one of the labels, say $\ell \in L$, available in the
+type and continues according to $S_\ell$:
 \begin{align*}
   \mathtt{select}\ \ell &: \oplus\{ \ell : S_\ell \mid \ell \in L \}
                           \multimap S_\ell
 \end{align*}
 The second alternative corresponds to an \emph{external choice}. The
-corresponding primitive \texttt{branch} receives one of the labels
+primitive \texttt{branch} receives one of the labels 
 mentioned in the types and chooses a continuation according to the
 label. In the presence of sum types, the primitive can be typed as
 follows \cite{DBLP:journals/toplas/Padovani19}.
 \begin{align*}
   \mathtt{branch} &: \&\{\ell: S_\ell \mid \ell \in L\} \multimap +\{\ell: S_\ell \mid \ell \in L\}
 \end{align*}
-Here is the modeling in Agda, extending the definitions of
-{\ASession}, {\ACommand}, and {\Aexecutor}:
+The modeling in Agda extends the definitions of
+{\ASession}, {\ACommand}, and {\Aexecutor} from
+Section~\ref{sec:finite-nonbr-simple}. A label set of size $n$ is
+modeled by the type $\AFin~n$ and the alternative continuation sessions by
+functions from labels to {\ASession} (isomorphic to vectors of sessions, cf.\  Section~\ref{sec:select-choice-with}).
 \stBranchingType
 \stBranchingCommand
+\stExecutorSignature\vspace{-1.5\baselineskip}
 \stBranchingExecutor
 
 Continuing our example, we define the type of an arithmetic server,
-which gives a choice between a binary operation and a unary one.
+which gives a choice between a binary operation and a unary one. 
+This definition uses a smart constructor for the external choice that
+takes a vector and transforms it into the corresponding function.
 \stExampleArithP
-The command for the server extends in the obvious way.
+The command for the server extends in the obvious way. The vector
+trick does not work in this case because the branches of the function
+have different types.
 \stArithpCommand
+
+\section{Going monadic}
+\label{sec:going-monadic}
+
+We already remarked about the monadic structure apparent in the
+callbacks and in the implementation of the {\Aexecutor}
+function. Indeed, moving on to a monadic interface makes our session
+programs more concise.
+
 
 
 \newpage

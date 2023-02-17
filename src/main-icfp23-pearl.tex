@@ -214,7 +214,7 @@ These types correspond to the standard grammar of session types, where
 $T$ is the type of payloads that can be transmitted and $S$ is the
 type of sessions. 
 \begin{align*}
-  T &::= \Anat & S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend
+  T &::= \Aint \mid \Abool  & S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend
 \end{align*}
 The session type $\Atsend{T}{S}$ ($\Atrecv{T}{S}$) describes a channel that is ready to send (receive)
 a value of payload type $T$ and the continue as $S$. The session type
@@ -248,8 +248,10 @@ for soundness.
 We take a different approach inspired by programming with
 callbacks. Instead of providing \texttt{send} and \texttt{recv}
 primitives to the programmer, we ask the programmer to define the
-``application logic'' by implementing a value whose type is indexed by
-a session type.
+``application logic'' by implementing a value whose type {\ACommand} is indexed by
+a session type. This definition relies on an interpretation of
+types as Agda types.
+\stTypeInterpretation
 \stCommand
 In this definition, the type $A$ embodies the application state. 
 Each $\ACSEND$ command takes a state transformer that extracts the value to
@@ -257,18 +259,19 @@ send from the current application state; each $\ACRECV$ command takes
 a state transformer that is indexed by the received value; the $\ACEND$
 command terminates the session. In fact, we could provide the
 application logic by actions in a state monad over the application
-state $A$. We defer the shift to a monadic interface to the next step,
+state $A$. We defer the shift to a monadic interface to Section~\ref{sec:going-monadic},
 when we have the full picture.
 
 Continuing our example, we define commands that implement a server
 for the protocols {\Abinaryp} and {\Aunaryp} with the operation instantiated to
 addition and negation, respectively.
 \stAddpCommand
-We use the variable $a$ for the application state and $x$ and $y$ for
-the value received from the channel.
+We use explicit lambda abstraction instead of (more fancy) combinators
+for clarity; the variable $a$ stands for the application state and $x$ and $y$ for
+the respective values received from the channel. 
 
-Finally, we need to execute commands. To this end, we write an
-interpreter for commands that relies on primitive operations provided
+To execute commands, we write an
+interpreter that relies on primitive operations provided
 in the $\AIO$ monad. The point of our approach is that this
 interpreter is the single definition where we are obliged to prove
 that it handles channels in a linear fashion. 
@@ -287,8 +290,8 @@ To actually run a server, it remains to provide a wrapper that accepts
 a connection and invokes the interpreter.
 \stAcceptor
 Examining the interpreter, we finally see the full monadic
-structure. We need stack of monad transformers starting with a state
-monad for the application state on top a reader monad providing the
+structure. We need a stack of monad transformers starting with a state
+monad for the application state on top of a reader monad providing the
 channel on top of the IO monad. 
 
 \section{Selection and choice}
@@ -302,16 +305,16 @@ theory allows branching on a finite set of labels using this syntax:
 \end{align*}
 Here $L$ is a finite set of labels, which can be chosen differently at
 every instance. 
-The first alternative corresponds to an \emph{internal choice} of the
+The type constructor $\oplus$ corresponds to an \emph{internal choice} of the
 program.  The \texttt{select} primitive sends one of the labels, say $\ell \in L$, available in the
 type and continues according to $S_\ell$:
 \begin{align*}
   \mathtt{select}\ \ell &: \oplus\{ \ell : S_\ell \mid \ell \in L \}
                           \multimap S_\ell
 \end{align*}
-The second alternative corresponds to an \emph{external choice}. The
+The type constructor $\&$ corresponds to an \emph{external choice}. The
 primitive \texttt{branch} receives one of the labels 
-mentioned in the types and chooses a continuation according to the
+mentioned in the type and chooses a continuation according to the
 label. In the presence of sum types, the primitive can be typed as
 follows \cite{DBLP:journals/toplas/Padovani19}.
 \begin{align*}
@@ -333,10 +336,147 @@ This definition uses a smart constructor for the external choice that
 takes a vector and transforms it into the corresponding function.
 \stExampleArithP
 The command for the server extends in the obvious way. The vector
-trick does not work in this case because the branches of the function
-have different types.
+trick does not work for the {\ACommand}s constructors {\ACSELECT} and
+{\ACCHOICE} because their arguments are dependent functions that
+generally return different types for different arguments.
 \stArithpCommand
 
+\section{Going in circles}
+\label{sec:going-circles}
+\input{latex/ST-recursive.tex}
+
+Recursive types are a common feature of session types. They are required
+to model protocols for servers that perform the same functionality
+over and over again. Our running example will be a server that allows
+a client to repeatedly perform a unary operation until the client
+quits.
+
+The pen-and-paper syntax of recursive types relies on type variables
+and a $\mu$ operator like so:\footnote{We gloss over the issue of
+  guardedness (or contractiveness) for recursive types to avoid further complexity in the
+  types.}
+\begin{align*}
+  S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend \mid
+      \Amu~X. S
+      \mid X
+      \mid \dots
+\end{align*}
+The intended semantics of the $\Amu$ operator is that $\Amu~X.S$ is
+isomorphic to $S[X \mapsto \Amu~X.S]$, the unfolding, where we
+substitute the recursive type itself for the variable $X$ in its body.
+
+For the Agda formalization we choose the standard de Bruijn encoding
+of bound variables. The parameter $n$ of
+the {\ASession} type denotes the number of type variables in
+scope. The {\Amu} operator opens a new scope and {\Aback~$i$}
+references the $i$th variable, the innermost binding being $0$.
+\rstSession
+
+Extending our running example, we redefine the protocol {\Aunaryp} as a function
+that takes the rest of the protocol and wrap it into a recursive
+type. The session type {\Amanyunaryp} is a recursive type that either
+runs a unary function and recurses or just ends the protocol. We
+define $\&$ as a smart constructor as in Section~\ref{sec:select-choice}.
+\rstExampleManyUnaryp
+
+The {\ACommand} type is straightforward to extend. It obtains a new
+parameter $n$ to match the parameter of the session type used as an
+index. We only show the two new cases.
+\rstCommand
+
+With this type we are ready to implement a
+service that repeatedly adds numbers as they are received and sends the partial
+sum as a response each time.
+\rstSumupCommand
+
+Executing a command with recursion requires a new component in the
+executor. Whenever execution enters a {\AMU} command, this component
+saves the body of the {\AMU} in a stack. Upon a {\ACONTINUE~$i$}
+command, we grab the corresponding loop body from the stack and
+continue with it. There are a few complications in setting up this new
+component that we call {\ACommandStore}.
+
+\begin{figure}[tp]
+  \begin{align*}
+    &
+      \begin{array}{|ll|}
+        0 &\mapsto \ASession~1
+      \end{array}
+    &&
+      \begin{array}{|ll|}
+        0 &\mapsto \ASession~2 \\
+        1 &\mapsto \ASession~1
+      \end{array}
+          &&
+             \dots
+    &&
+       \begin{array}{|ll|}
+         0 & \mapsto \ASession~(1+n) \\
+         1 & \mapsto \ASession~n \\
+           & \vdots \\
+         n-1 & \mapsto \Asession~1
+       \end{array}
+  \end{align*}
+  \caption{The {\ACommandStore} after 1, 2, and $n$ loop entries}
+  \label{fig:commandstore}
+\end{figure}
+First, its type is non-obvious.  The top-level type is a
+{\ASession~0}. When we enter the first loop, its body refers to a
+session of type {\ASession~1}. Hence, the {\ACommandStore} contains
+one entry (first table in Figure~\ref{fig:commandstore}).
+Entering the next loop pushes a body for the type {\ASession~2}
+(middle of figure). After entering the $n$-th loop, we obtain the
+picture on the right of Figure~\ref{fig:commandstore}. Here is a
+suitable type definition.
+\rstCommandStore
+
+For some $(i : \AFin~(\Asuc~ n))$, the function
+$\AgdaFunction{opposite}~i$ returns $n-i$ (as an element of the same
+type). The tricky part is implemented the typed push and pop operations on
+that structure.
+\rstPops
+
+The \AgdaFunction{pop1} function pops the first entry off the
+{\ACommandStore}. It gets used in defining the inductive step of the
+function tele
+\AgdaFunction{pop}, which pops any (legal) number of entries
+from the stack. The proofs are short but technical. They involve
+injections from $\AFin~n$ to $\AFin~(\Asuc~n)$.
+
+\rstExecutorSignature\vspace{-1.5\baselineskip}
+\rstExecutor
+
+The execution of {\AMU} just pushes the loop body onto the
+{\ACommandStore}, again with minor technical complications due to the
+{\AFin} type --- just ignore the \AgdaKeyword{rewrite} to see what is
+happening.
+
+The case for {\ACONTINUE~$i$} reveals another complication. The recursive
+call happens on a command drawn from the {\ACommandStore}. This
+command is unrelated to the current command, which upsets Agda's
+termination checker. To console it we introduce a \AgdaType{Gas}
+argument, which we decrement at each {\ACONTINUE}.
+
+The question is, what to do if we run out of gas?
+There are at least two possibilities.
+\begin{enumerate}
+\item We regard the current formalization as a proof of concept and
+  refer the reader to a ``real'' implementation in Haskell, where the
+  \AgdaType{Gas} argument is not required. We see no
+  problem in creating such an implementation, but it would be more
+  involved as dependent types are not yet fully integrated in Haskell.
+\item We turn the bug into a feature and require that every
+  {\ACONTINUE} communicates with the other end of the channel to
+  exchange their respective gas levels and quit the loop if one end
+  runs out of gas. This choice implies that we would have to a
+  continuation argument to  {\ACONTINUE} that acts like a
+  finally-clause for exception and finishes the protocol in an orderly way.
+\end{enumerate}
+The current formalization leaves that question open and just breaks
+the protocol. Our preferred solution is a Haskell implementation,
+which omits the gas and thus sticks to the protocol.
+
+\newpage
 \section{Going monadic}
 \label{sec:going-monadic}
 
@@ -349,7 +489,7 @@ programs more concise.
 
 \newpage
 
-\section{Discussion}
+\section{Discussion}            %
 \label{sec:discussion}
 
 \subsection{Command fragments}

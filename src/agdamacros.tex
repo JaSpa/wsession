@@ -1,17 +1,29 @@
+\newcommand\Asuc{\AgdaInductiveConstructor{suc}}
 \newcommand\Anat{\AgdaInductiveConstructor{nat}}
+\newcommand\Aint{\AgdaInductiveConstructor{int}}
+\newcommand\Abool{\AgdaInductiveConstructor{bool}}
 \newcommand\Atend{\AgdaInductiveConstructor{end}}
-\newcommand\Atsend[2]{\AgdaInductiveConstructor{‼{#1}∙{#2}}}
-\newcommand\Atrecv[2]{\AgdaInductiveConstructor{⁇{#1}∙{#2}}}
+\newcommand\Atsend[2]{\AgdaInductiveConstructor{‼{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
+\newcommand\Atrecv[2]{\AgdaInductiveConstructor{⁇{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
 \newcommand\ACEND{\AgdaInductiveConstructor{END}}
 \newcommand\ACSEND{\AgdaInductiveConstructor{SEND}}
 \newcommand\ACRECV{\AgdaInductiveConstructor{RECV}}
+\newcommand\ACSELECT{\AgdaInductiveConstructor{SELECT}}
+\newcommand\ACCHOICE{\AgdaInductiveConstructor{CHOICE}}
 \newcommand\AFin{\AgdaDatatype{Fin}}
 \newcommand\ACommand{\AgdaDatatype{Command}}
+\newcommand\ACommandStore{\AgdaDatatype{CommandStore}}
 \newcommand\ASession{\AgdaDatatype{Session}}
 \newcommand\Abinaryp{\AgdaFunction{binaryp}}
 \newcommand\Aunaryp{\AgdaFunction{unaryp}}
-\newcommand\Aexecutor{\AgdaFunction{executor}}
+\newcommand\Aexecutor{\AgdaFunction{exec}}
+\newcommand\Aexec{\AgdaFunction{exec}}
 \newcommand\AIO{\AgdaFunction{IO}}
+\newcommand\Amu{\AgdaInductiveConstructor{\ensuremath{\mu}}}
+\newcommand\AMU{\AgdaInductiveConstructor{LOOP}}
+\newcommand\ACONTINUE{\AgdaInductiveConstructor{CONTINUE}}
+\newcommand\Aback{\AgdaInductiveConstructor{\ensuremath{`}}}
+\newcommand\Amanyunaryp{\AgdaFunction{many-unaryp}}
 
 %%% Local Variables:
 %%% mode: latex

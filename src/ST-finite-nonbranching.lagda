@@ -23,21 +23,23 @@ pattern [_,_,_] x y z = x ∷ y ∷ z ∷ []
 
 
 variable
-  n : ℕ
+  n k : ℕ
 \end{code}
 \newcommand\stFiniteType{%
 \begin{code}
 data Type : Set where
-  nat int bool : Type
-  fin : ℕ → Type
+  int bool : Type
 \end{code}}
 \begin{code}[hide]
+  nat : Type
+  fin : ℕ → Type
+
 module formatting1 where
 \end{code}
 \newcommand\stBranchingType{%
 \begin{code}
   data Session : Set where
-    ⊕ & : ∀ {n} → (si : (i : Fin n) → Session) → Session
+    ⊕ & : ∀ {k} → (si : (i : Fin k) → Session) → Session
 \end{code}}
 \newcommand\stFiniteSession{%
 \begin{code}
@@ -46,10 +48,10 @@ data Session : Set where
   end : Session
 \end{code}}
 \begin{code}[hide]
-  ⊕ & : ∀ {n} → (si : (i : Fin n) → Session) → Session
+  ⊕ & : ∀ {k} → (si : (i : Fin k) → Session) → Session
 \end{code}
 \begin{code}[hide]
-  sel chc : ∀{n} → Vec Session n → Session
+  sel chc : ∀{k} → Vec Session k → Session
   select choice : Session → Session → Session
 
 pattern recv t s = ⁇ t ∙ s
@@ -58,7 +60,7 @@ pattern send t s = ‼ t ∙ s
 infixr 20 ‼_∙_ ⁇_∙_
 
 
-vec→fin : Vec Session n → (Fin n → Session)
+vec→fin : Vec Session k → (Fin k → Session)
 vec→fin {zero} [] = λ()
 vec→fin {suc n} (x ∷ v) = λ where
   zero → x
@@ -97,12 +99,16 @@ variable
   A A′ A″ A₁ A₂ : Set
   T t : Type
   S s s₁ s₂ : Session
-
+\end{code}
+\newcommand\stTypeInterpretation{%
+\begin{code}
 T⟦_⟧ : Type → Set
-T⟦ nat ⟧ = ℕ
 T⟦ int ⟧ = ℤ
 T⟦ bool ⟧ = Bool
-T⟦ fin n ⟧ = Fin n
+\end{code}}
+\begin{code}[hide]
+T⟦ nat ⟧ = ℕ
+T⟦ fin k ⟧ = Fin k
 
 module formatting2 where
 
@@ -110,11 +116,11 @@ module formatting2 where
 \newcommand\stBranchingCommand{%
 \begin{code}
   data Command (A : Set) : Session → Set where
-    SELECT : ∀ {si} → (setl : A → Fin n × A)
-                    → ((i : Fin n) → Command A (si i))
+    SELECT : ∀ {si} → (setl : A → Fin k × A)
+                    → ((i : Fin k) → Command A (si i))
                     → Command A (⊕ si)
-    CHOICE : ∀ {si} → (getl : Fin n → A → A)
-                    → ((i : Fin n) → Command A (si i))
+    CHOICE : ∀ {si} → (getl : Fin k → A → A)
+                    → ((i : Fin k) → Command A (si i))
                     → Command A (& si)
 \end{code}}
 \newcommand\stCommand{%
@@ -125,8 +131,8 @@ data Command (A : Set) : Session → Set where
   RECV   : (T⟦ T ⟧ → A → A) → Command A S → Command A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
-  SELECT : ∀ {n si} → (A → Fin n × A) → ((i : Fin n) → Command A (si i)) → Command A (⊕ si)
-  CHOICE : ∀ {n si} → (Fin n → A → A) → ((i : Fin n) → Command A (si i)) → Command A (& si)
+  SELECT : ∀ {k si} → (A → Fin k × A) → ((i : Fin k) → Command A (si i)) → Command A (⊕ si)
+  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Command A (si i)) → Command A (& si)
 \end{code}
 \begin{code}[hide]
   SELECT2 : (A → Bool × A) → Command A s₁ → Command A s₂ → Command A (select s₁ s₂)
@@ -136,10 +142,10 @@ data Command (A : Set) : Session → Set where
 \newcommand\stAddpCommand{%
 \begin{code}
 addp-command : Command ℤ binaryp
-addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ 0ℤ , a ⟩) $ END
+addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ END
 
 negp-command : Command ℤ unaryp
-negp-command = RECV const $ SEND (λ a → ⟨ 0ℤ , - a ⟩) $ END
+negp-command = RECV (λ x a → - x) $ SEND (λ a → ⟨ a , a ⟩) $ END
 \end{code}}
 \newcommand\stArithpCommand{%
 \begin{code}
@@ -153,48 +159,48 @@ arithp-command = CHOICE (const id) λ where
 postulate
   Channel : Set
   primAccept : IO Channel
-  primClose : Channel → IO ⊤
-  primSend : ∀ {T} → T⟦ T ⟧ → Channel → IO ⊤
-  primRecv : ∀ {T} → Channel → IO T⟦ T ⟧
+  primClose  : Channel → IO ⊤
+  primSend   : A → Channel → IO ⊤
+  primRecv   : Channel → IO A
 \end{code}}
 \newcommand\stExecutorSignature{%
 \begin{code}
-executor : {s : Session} → Command A s → (init : A) → Channel → IO A
+exec : {s : Session} → Command A s → (init : A) → Channel → IO A
 \end{code}}
 \newcommand\stExecutor{%
 \begin{code}
-executor END state ch = do
+exec END state ch = do
   primClose ch
   pure state
-executor (SEND getx cmd) state ch = do
+exec (SEND getx cmd) state ch = do
   let ⟨ state′ , x ⟩ = getx state
   primSend x ch
-  executor cmd state′ ch
-executor (RECV putx cmd) state ch = do
+  exec cmd state′ ch
+exec (RECV putx cmd) state ch = do
   x ← primRecv ch
   let state′ = putx x state
-  executor cmd state′ ch
+  exec cmd state′ ch
 \end{code}}
 \newcommand\stBranchingExecutor{%
 \begin{code}
-executor (SELECT{n} getx cont) state ch = do
+exec (SELECT{n} getx cont) state ch = do
   let ⟨ x , state′ ⟩ = getx state
-  primSend{fin n} x ch
-  executor (cont x) state′ ch
+  primSend{Fin n} x ch
+  exec (cont x) state′ ch
 
-executor (CHOICE{n} putx cont) state ch = do
-  x ← primRecv {fin n} ch
-  executor (cont x) state ch
+exec (CHOICE{n} putx cont) state ch = do
+  x ← primRecv {Fin n} ch
+  exec (cont x) state ch
 \end{code}}
 \begin{code}[hide]
-executor (SELECT2 getx cmd₁ cmd₂) state ch = do
+exec (SELECT2 getx cmd₁ cmd₂) state ch = do
   let ⟨ x , state′ ⟩ = getx state
-  primSend {bool} x ch
-  (case x of (λ{ false → executor cmd₁ state′ ch ; true → executor cmd₂ state′ ch}))
-executor (CHOICE2 putx cmd₁ cmd₂) state ch = do
-  x ← primRecv {bool} ch
+  primSend {Bool} x ch
+  (case x of (λ{ false → exec cmd₁ state′ ch ; true → exec cmd₂ state′ ch}))
+exec (CHOICE2 putx cmd₁ cmd₂) state ch = do
+  x ← primRecv {Bool} ch
   let ⟨ _ , state′ ⟩ = putx x state
-  (case x of (λ{ false → executor cmd₁ state′ ch ; true → executor cmd₂ state′ ch}))
+  (case x of (λ{ false → exec cmd₁ state′ ch ; true → exec cmd₂ state′ ch}))
 \end{code}
 \newcommand\stAcceptor{%
 \begin{code}
@@ -203,7 +209,7 @@ record Accepting A s : Set where
   field cmd : Command A s
 
 acceptor : Accepting A s → A → IO A
-acceptor (ACC cmd) a = primAccept >>= executor cmd a
+acceptor (ACC cmd) a = primAccept >>= exec cmd a
 \end{code}}
 \begin{code}[hide]
 ----------------------------------------------------------------------
@@ -236,40 +242,40 @@ data Command′ (A : Set) : Set → Session → Set₁ where
 
   SELECT22 : (A → ΣB A₁ A₂) → Command′ A₁ A″ s₁ → Command′ A₂ A″ s₂ → Command′ A A″ (select s₁ s₂)
 
-executor′ : {s : Session} → Command′ A A″ s → (init : A) → Channel → IO A″
-executor′ END state ch = do
+exec′ : {s : Session} → Command′ A A″ s → (init : A) → Channel → IO A″
+exec′ END state ch = do
   primClose ch
   pure state
-executor′ (SEND getx cmd) state ch = do
+exec′ (SEND getx cmd) state ch = do
   let ⟨ x , state′ ⟩ = getx state
   primSend x ch
-  executor′ cmd state′ ch
-executor′ (RECV putx cmd) state ch = do
+  exec′ cmd state′ ch
+exec′ (RECV putx cmd) state ch = do
   x ← primRecv ch
   let state′ = putx x state
-  executor′ cmd state′ ch
-executor′ (SELECT21 getx cmd₁ cmd₂) state ch
+  exec′ cmd state′ ch
+exec′ (SELECT21 getx cmd₁ cmd₂) state ch
   with getx state
 ... | inj₁ state₁ = do
-      primSend {bool} true ch
-      executor′ cmd₁ state₁ ch
+      primSend {Bool} true ch
+      exec′ cmd₁ state₁ ch
 ... | inj₂ state₂ = do
-      primSend {bool} false ch
-      executor′ cmd₂ state₂ ch
-executor′ (CHOICE21 putx cmd₁ cmd₂) state ch = do
-  false ← primRecv {bool} ch
+      primSend {Bool} false ch
+      exec′ cmd₂ state₂ ch
+exec′ (CHOICE21 putx cmd₁ cmd₂) state ch = do
+  false ← primRecv {Bool} ch
     where
       true → do
         let state′ = putx true state
-        executor′ cmd₂ state′ ch
+        exec′ cmd₂ state′ ch
   let state′ = putx false state
-  executor′ cmd₁ state′ ch
-executor′ (SELECT22 getx cmd₁ cmd₂) state ch = do
+  exec′ cmd₁ state′ ch
+exec′ (SELECT22 getx cmd₁ cmd₂) state ch = do
   let bst = getx state
-  primSend {bool} (proj₁ bst) ch
+  primSend {Bool} (proj₁ bst) ch
   ⟨ false , state₁ ⟩ ← pure bst
     where
-      ⟨ true , state₂ ⟩ → executor′ cmd₂ state₂ ch
-  executor′ cmd₁ state₁ ch
+      ⟨ true , state₂ ⟩ → exec′ cmd₂ state₂ ch
+  exec′ cmd₁ state₁ ch
 
 \end{code}

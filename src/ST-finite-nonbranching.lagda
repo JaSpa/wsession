@@ -116,12 +116,22 @@ module formatting2 where
 \newcommand\stBranchingCommand{%
 \begin{code}
   data Command (A : Set) : Session → Set where
-    SELECT : ∀ {si} → (setl : A → Fin k × A)
-                    → ((i : Fin k) → Command A (si i))
+    SELECT : ∀ {si} → (i : Fin k)
+                    → Command A (si i)
                     → Command A (⊕ si)
     CHOICE : ∀ {si} → (getl : Fin k → A → A)
                     → ((i : Fin k) → Command A (si i))
                     → Command A (& si)
+\end{code}}
+\begin{code}[hide]
+module formatting-deselect where
+\end{code}
+\newcommand\stDynamicBranchingCommand{%
+\begin{code}
+  data Command (A : Set) : Session → Set where
+    DSELECT : ∀ {si} → (setl : A → A × Fin k)
+                     → ((i : Fin k) → Command A (si i))
+                     → Command A (⊕ si)
 \end{code}}
 \newcommand\stCommand{%
 \begin{code}
@@ -131,7 +141,7 @@ data Command (A : Set) : Session → Set where
   RECV   : (T⟦ T ⟧ → A → A) → Command A S → Command A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
-  SELECT : ∀ {k si} → (A → Fin k × A) → ((i : Fin k) → Command A (si i)) → Command A (⊕ si)
+  SELECT : ∀ {k si} → (i : Fin k) → Command A (si i) → Command A (⊕ si)
   CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Command A (si i)) → Command A (& si)
 \end{code}
 \begin{code}[hide]
@@ -183,10 +193,9 @@ exec (RECV putx cmd) state ch = do
 \end{code}}
 \newcommand\stBranchingExecutor{%
 \begin{code}
-exec (SELECT{n} getx cont) state ch = do
-  let ⟨ x , state′ ⟩ = getx state
-  primSend{Fin n} x ch
-  exec (cont x) state′ ch
+exec (SELECT{n} i cmd) state ch = do
+  primSend{Fin n} i ch
+  exec cmd state ch
 
 exec (CHOICE{n} putx cont) state ch = do
   x ← primRecv {Fin n} ch

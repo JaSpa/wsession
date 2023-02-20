@@ -137,7 +137,7 @@ data Command n (A : Set) : Session n → Set where
   END    : Command n A end
   SEND   : (A → A × T⟦ T ⟧) → Command n A S → Command n A (‼ T ∙ S)
   RECV   : (T⟦ T ⟧ → A → A) → Command n A S → Command n A (⁇ T ∙ S)
-  SELECT : ∀ {k si} → (A → A × Fin k) → ((i : Fin k) → Command n A (si i)) → Command n A (⊕′ si)
+  SELECT : ∀ {k si} → (i : Fin k) → Command n A (si i) → Command n A (⊕′ si)
   CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Command n A (si i)) → Command n A (&′ si)
 \end{code}
 \newcommand\rstAddpCommand{%
@@ -202,10 +202,9 @@ module alternative-executor where
     x ← primRecv ch
     let st′ = putx x st
     exec cmd cms st′ ch
-  exec (SELECT getx f-cmd) cms st ch = do
-    let ⟨ st′ , x ⟩ = getx st
-    primSend x ch
-    exec (f-cmd x) cms st′ ch
+  exec (SELECT i cmd) cms st ch = do
+    primSend i ch
+    exec cmd cms st ch
   exec (CHOICE putx f-cmd) cms st ch = do
     x ← primRecv ch
     let st′ = putx x st
@@ -238,10 +237,9 @@ exec k (RECV putx cmd) cms state ch = do
   x ← primRecv ch
   let state′ = putx x state
   exec k cmd cms state′ ch
-exec k (SELECT getx f-cmd) cms state ch = do
-  let ⟨ state′ , x ⟩ = getx state
-  primSend x ch
-  exec k (f-cmd x) cms state′ ch
+exec k (SELECT i cmd) cms state ch = do
+  primSend i ch
+  exec k cmd cms state ch
 exec k (CHOICE putx f-cmd) cms state ch = do
   x ← primRecv ch
   let state′ = putx x state

@@ -6,6 +6,7 @@
 \newcommand\Atend{\AgdaInductiveConstructor{end}}
 \newcommand\Atsend[2]{\AgdaInductiveConstructor{‼{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
 \newcommand\Atrecv[2]{\AgdaInductiveConstructor{⁇{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
+\newcommand\ACSKIP{\AgdaInductiveConstructor{SKIP}}
 \newcommand\ACEND{\AgdaInductiveConstructor{END}}
 \newcommand\ACSEND{\AgdaInductiveConstructor{SEND}}
 \newcommand\ACRECV{\AgdaInductiveConstructor{RECV}}
@@ -26,6 +27,12 @@
 \newcommand\Aback{\AgdaInductiveConstructor{\ensuremath{`}}}
 \newcommand\Amanyunaryp{\AgdaFunction{many-unaryp}}
 \newcommand\Arestart{\AgdaFunction{restart}}
+\newcommand\ARawMonad{\AgdaRecord{RawMonad}}
+\newcommand\AStateT{\AgdaRecord{StateT}}
+\newcommand\Aput{\AgdaFunction{put}}
+\newcommand\Amodify{\AgdaFunction{modify}}
+\newcommand\Aget{\AgdaFunction{get}}
+\newcommand\Aid{\AgdaFunction{id}}
 
 %%% Local Variables:
 %%% mode: latex

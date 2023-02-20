@@ -198,6 +198,8 @@ either via compilation or via translation
 
 TODO: Mention TCB (trusted computing base) in connection to linearity.
 
+TODO: contribution dynamic selector
+
 \section{Finite nonbranching session types}
 \label{sec:finite-nonbr-simple}
 
@@ -344,6 +346,14 @@ trick does not work for the {\ACommand} constructors {\ACSELECT} and
 generally return different types for different arguments.
 \stArithpCommand
 
+Finally, we observe that the proposed interface enables a more dynamic
+selection operator than in standard session types. While the standard
+select operator is indexed by a label that is fixed at compile time,
+we can supply a dynamic selector command where the label is computed
+by a callback \AgdaFunction{setl} run time:
+\stDynamicBranchingCommand
+Extending {\Aexecutor} to this command is straightforward.
+
 \section{Going in circles}
 \label{sec:going-circles}
 \input{latex/ST-recursive.tex}
@@ -402,25 +412,25 @@ component that we call {\ACommandStore}.
 \begin{figure}[tp]
   \begin{align*}
     &
-      \begin{array}{|ll|}
+      \begin{array}[t]{|ll|}
         0 &\mapsto \ASession~1
       \end{array}
     &&
-      \begin{array}{|ll|}
+      \begin{array}[t]{|ll|}
         0 &\mapsto \ASession~2 \\
         1 &\mapsto \ASession~1
       \end{array}
           &&
              \dots
     &&
-       \begin{array}{|ll|}
+       \begin{array}[t]{|ll|}
          0 & \mapsto \ASession~(1+n) \\
          1 & \mapsto \ASession~n \\
            & \vdots \\
-         n-1 & \mapsto \Asession~1
+         n-1 & \mapsto \ASession~1
        \end{array}
   \end{align*}
-  \caption{The {\ACommandStore} after 1, 2, and $n$ loop entries}
+  \caption{The session type indices in {\ACommandStore} after 1, 2, and $n$ loop entries}
   \label{fig:commandstore}
 \end{figure}
 First, its type is non-obvious.  The top-level type is a
@@ -457,7 +467,7 @@ happening.
 The case for {\ACONTINUE~$i$} reveals another complication. The recursive
 call happens on a command drawn from the {\ACommandStore}. This
 command is unrelated to the current command, which upsets Agda's
-termination checker. To console it we introduce a \AgdaType{Gas}
+termination checker. To console it we introduce a \AgdaFunction{Gas}
 argument, which we decrement at each {\ACONTINUE}.
 
 The question is, what to do if we run out of gas?
@@ -465,7 +475,7 @@ There are at least three possibilities.
 \begin{enumerate}
 \item We regard the current formalization as a proof of concept and
   refer the reader to a ``real'' implementation in Haskell, where the
-  \AgdaType{Gas} argument is not required. We see no
+  \AgdaFunction{Gas} argument is not required. We see no
   problem in creating such an implementation, but it would be more
   involved as dependent types are not yet fully integrated in Haskell.
 \item We turn the bug into a feature and require that every
@@ -491,14 +501,77 @@ The current formalization leaves that question open and just breaks
 the protocol. Our preferred solution is a Haskell implementation,
 which omits the gas and thus sticks to the protocol.
 
-\newpage
 \section{Going monadic}
 \label{sec:going-monadic}
+\input{latex/ST-monadic.tex}
 
-We already remarked about the monadic structure apparent in the
+We already remarked on the monadic structure apparent in the
 callbacks and in the implementation of the {\Aexecutor}
 function. Indeed, moving on to a monadic interface makes our session
 programs more concise.
+
+We start with a slightly refactored type {\ACommand}.
+\mstCommand
+
+First, we remove handling of the application state from the
+{\ACCHOICE} command so that both, {\ACSELECT} and {\ACCHOICE}, are solely
+dealing with communication.
+
+Second, we introduce a new {\ACSKIP} command that only performs a state
+transformation via its single callback.
+
+Third, we restate the types of the callbacks for {\ACSEND} and {\ACRECV} in terms of state transformers.
+
+Here are the specifics of the types of the callbacks. Each callback
+runs in a state monad that handles the application state on top of
+another monad $M$. This construction is expressed in terms of the
+monad transformer {\AStateT} applied to the application state
+$A$ and the underlying monad $M$. The type of the callback does not give away more
+than that: $M$ has a type that fits a monad and it implements the
+interface {\ARawMonad} (a record that contains the basic monadic
+operations; using the record in this way enables overloading of the
+monadic operators in Agda \cite{DBLP:conf/icfp/DevrieseP11}). 
+
+Our examples become really concise:
+\mstExampleServers
+Here, {\Aput}, {\Amodify}, and {\Aget} are monadic functions defined
+in the state monad transformer. Their full types are fairly
+unreadable, but intuitively we can treat them like this:
+\begin{align*}
+  \Aput &: A \to ST~A~\top
+  & \Amodify &: (A \to A)\to ST~A~A
+  & \Aget &: ST~A~A
+\end{align*}
+{\Aput} overwrites the state with its argument; {\Amodify~$h$} applies 
+function $h$ to the state and returns the new state; and {\Aget $=$ \Amodify~\Aid} returns the current state.
+
+While we are at it, we also define the {\Aexecutor} function in
+monadic style. At this point, the full type of the execution monad
+emerges. We already encountered the state transformer on top for
+handling the application state. Below we find a reader monad (again
+implemented using a monad transformer) that handles access to the
+channel. At the bottom, we have the IO monad as before.
+\mstExecutor
+
+The most remarkable aspect of this implementation is how unremarkable
+it is. However, bear in mind that monads have been used for a long
+time to contain linear resources, most notably with the inception of
+monadic IO \cite{DBLP:conf/popl/JonesW93}. That is, our proof
+obligation of linear handling for the channel becomes even simpler in
+this monadic setting.
+
+We conclude this section with the definition of the monadic
+acceptor. It essentially invokes the runners of the reader and state
+monads and executes the underlying IO action.
+\mstAcceptor
+
+\section{Handling multiple channels}
+\label{sec:handl-mult-chann}
+
+We have to amend a final element to fully encompass traditional binary
+session types: a thread can open and manipulate many channels at a
+time. So far, our interfaces were restricted to single channels. We
+now turn to lifting this restriction.
 
 
 

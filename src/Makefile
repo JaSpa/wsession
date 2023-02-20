@@ -1,5 +1,5 @@
 GOAL= main-icfp23-pearl
-TARGET_MODULES= ST-finite-nonbranching ST-recursive
+TARGET_MODULES= ST-finite-nonbranching ST-recursive ST-monadic
 TARGET_FILES= agdamacros.tex unicodeletters.tex $(addprefix $(PREFIX)/, $(addsuffix .tex, $(TARGET_MODULES)))
 PREFIX= latex
 

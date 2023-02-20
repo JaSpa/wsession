@@ -72,6 +72,7 @@
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
 \title{How to Embed Session Types Without Linearity}
+\subtitle{Functional Pearl}
 
 %%
 %% The "author" command and its associated commands are used to define
@@ -195,7 +196,9 @@ language Agda, so that our development is transferrable to Haskell,
 either via compilation or via translation
 \cite{DBLP:conf/haskell/CockxME0N22}.
 
-\section{Finite nonbranching simple session types}
+TODO: Mention TCB (trusted computing base) in connection to linearity.
+
+\section{Finite nonbranching session types}
 \label{sec:finite-nonbr-simple}
 
 \input{latex/ST-finite-nonbranching.tex}
@@ -336,7 +339,7 @@ This definition uses a smart constructor for the external choice that
 takes a vector and transforms it into the corresponding function.
 \stExampleArithP
 The command for the server extends in the obvious way. The vector
-trick does not work for the {\ACommand}s constructors {\ACSELECT} and
+trick does not work for the {\ACommand} constructors {\ACSELECT} and
 {\ACCHOICE} because their arguments are dependent functions that
 generally return different types for different arguments.
 \stArithpCommand
@@ -458,7 +461,7 @@ termination checker. To console it we introduce a \AgdaType{Gas}
 argument, which we decrement at each {\ACONTINUE}.
 
 The question is, what to do if we run out of gas?
-There are at least two possibilities.
+There are at least three possibilities.
 \begin{enumerate}
 \item We regard the current formalization as a proof of concept and
   refer the reader to a ``real'' implementation in Haskell, where the
@@ -470,7 +473,19 @@ There are at least two possibilities.
   exchange their respective gas levels and quit the loop if one end
   runs out of gas. This choice implies that we would have to a
   continuation argument to  {\ACONTINUE} that acts like a
-  finally-clause for exception and finishes the protocol in an orderly way.
+  finally-clause for exception and finishes the protocol in an orderly
+  way.
+\item We can modify {\Aexecutor} so that it always takes a single step
+  and returns either a continuation and an intermediate state or a
+  final result of type $A$. This modification is straightforward in 
+  the setting with loops as a value \AgdaFunction{cms} of type {\ACommandStore~$(\Asuc~n)$~$A$}
+  can serve as a continuation. To restart a continuation, we simply invoke
+  {\Aexecutor} on \AgdaFunction{cms}~\Azero. For concreteness, we show
+  the continuation type and an implementation of the restart function.
+  \rstAlternativeExecutorRestart
+  With this approach, the management of {\Arestart}  has to be
+  included in the TCB as it also has to guarantee linear treatment of
+  the channel.
 \end{enumerate}
 The current formalization leaves that question open and just breaks
 the protocol. Our preferred solution is a Haskell implementation,
@@ -489,7 +504,7 @@ programs more concise.
 
 \newpage
 
-\section{Discussion}            %
+\section{Discussion}
 \label{sec:discussion}
 
 \subsection{Command fragments}

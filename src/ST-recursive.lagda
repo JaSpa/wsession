@@ -182,6 +182,45 @@ pop1 cms i with cms (suc i)
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
 pop {suc n} cms (suc i) = subst (λ H → CommandStore (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
 \end{code}
+\begin{code}[hide]
+module alternative-executor where
+  exec : Command n A s → CommandStore n A → (init : A) → Channel
+    → IO (∃[ n ] (CommandStore (suc n) A × A) ⊎ A)
+  exec {n = n} {A = A} {s = μ s} (LOOP cmd) cms st ch = exec cmd cms′ st ch
+    where cms′ : CommandStore (suc n) A
+          cms′ zero    rewrite toℕ-fromℕ n = ⟨ s , cmd ⟩
+          cms′ (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
+  exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
+  exec END cms st ch = do
+    primClose ch
+    pure (inj₂ st)
+  exec (SEND getx cmd) cms st ch = do
+    let ⟨ st′ , x ⟩ = getx st
+    primSend x ch
+    exec cmd cms st′ ch
+  exec (RECV putx cmd) cms st ch = do
+    x ← primRecv ch
+    let st′ = putx x st
+    exec cmd cms st′ ch
+  exec (SELECT getx f-cmd) cms st ch = do
+    let ⟨ st′ , x ⟩ = getx st
+    primSend x ch
+    exec (f-cmd x) cms st′ ch
+  exec (CHOICE putx f-cmd) cms st ch = do
+    x ← primRecv ch
+    let st′ = putx x st
+    exec (f-cmd x) cms st′ ch
+\end{code}
+\newcommand\rstAlternativeExecutorRestart{%
+\begin{code}
+  CmdCont : Set → Set
+  CmdCont A = ∃[ n ] (CommandStore (suc n) A × A)
+
+  restart : CmdCont A → Channel → IO (CmdCont A ⊎ A)
+  restart ⟨ n , ⟨ cms , st ⟩ ⟩ ch
+    with cms zero
+  ... | ⟨ s₀ , cmd₀ ⟩ rewrite toℕ-fromℕ n = exec cmd₀ cms st ch
+\end{code}}
 \newcommand\rstExecutorSignature{%
 \begin{code}
 Gas = ℕ

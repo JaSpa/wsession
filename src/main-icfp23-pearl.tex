@@ -1,6 +1,7 @@
 \documentclass[acmsmall,screen,anonymous,review]{acmart}
 
 \usepackage{agda}
+\usepackage{stmaryrd}
 
 %% There is a limit of 25 pages for a full paper or Functional Pearl
 %% and 12 pages for an Experience Report; in either case, the
@@ -282,9 +283,10 @@ interpreter is the single definition where we are obliged to prove
 that it handles channels in a linear fashion. 
 \stPostulates
 This API should be self-explanatory. It declares an abstract type of
-channels with operations to accept a connection, close a channel, as
+untyped, raw channels with operations to accept a connection, close a channel, as
 well as send and receive a value over the channel. It glosses over issues like
-serialization, which can be addressed using type classes.
+serialization, which can be addressed using type class constraints like
+{\ASerialize~$A$} (in Haskell) on {\AprimSend} and {\AprimRecv}.
 % Our shared memory implementation relies on unsafe casts.
 
 The interpreter itself is defined by induction on the type
@@ -564,6 +566,86 @@ We conclude this section with the definition of the monadic
 acceptor. It essentially invokes the runners of the reader and state
 monads and executes the underlying IO action.
 \mstAcceptor
+
+\section{Context-free session types}
+\label{sec:context-free-session}
+\input{latex/ST-contextfree.tex}
+
+Context-free session types
+\cite{DBLP:journals/iandc/AlmeidaMTV22,DBLP:journals/toplas/Padovani19,DBLP:conf/icfp/ThiemannV16}
+have been conceived to liberate session types from the restriction to
+tail recursion. Alleviating this restriction makes session-typed
+programming more compositional and enables low-level programming tasks
+like the serialization of tree structures.
+
+The basic idea \cite{DBLP:conf/icfp/ThiemannV16} is to reorganize the
+type language of session types as follows.
+\begin{align*}
+  S &::= \Atcfsend{T} \mid \Atcfrecv{T} \mid \Atcfcomp{S}{S} \mid \Atcfskip
+\end{align*}
+Now $\Atcfsend{T}$ ($\Atcfrecv{T}$) describes just the act of sending
+(receiving) a value of type $T$. To combine two session types, we have
+to use sequential composition $\Atcfcomp{S}{S}$ with unit
+$\Atcfskip$. The branching types and recursion are as before, so we do
+not repeat them here.
+
+The Agda encoding of this structure combines straightforwardly with
+the accumulated work of the previous sections.
+\cstSession
+
+The revised command structure has a few catches that require
+explanation.
+\cstCmd
+
+The {\ACSKIP} command is associated with a {\Atcfskip} in the session
+type. This connection is sometimes needed, but most often it is
+undesired. To eliminate superfluous {\Atcfskip}s in the type, we
+provide a smart composition constructor that simplifies compositions
+with {\Atcfskip}.
+
+The {\ACSEND} and {\ACRECV} commands no longer take a command parameter
+to process the continuation session. This functionality is now
+provided once and for all by the composition operator.
+
+The composition operator for two commands has an additional argument
+to combine the resulting states of the first and second command. Quite
+often, with tail-recursive session types, we simply ignore the outcome
+of the first command and pass on the second.
+
+The remaining commands, {\ACSELECT} and {\ACCHOICE}, are as before using
+the dynamic selection operator for maximum flexibility.
+
+We only show an excerpt of the {\Aexecutor} function.
+\cstExec
+
+The implementation of {\ACSKIP} just executes the action.
+Composition performs the left command, obtains its final state in
+$x_1$, then it performs the right command, obtains its final state in
+$x_2$, and updates the returned state to $h~x_1~x_2$.
+The implementations for {\AMU} and {\ACONTINUE} are as before in
+Section~\ref{sec:going-circles}. The difference is that the
+{\ACONTINUE} operation may now appear in the context of a composition
+which provides a nontrivial continuation. In
+Section~\ref{sec:going-circles}, the function {\Aexecutor} is tail
+recursive, but here it is not!
+
+
+The previously discussed examples can be made to work without much
+effort. To expose the difference we concentrate on a protocol that exploits the power of
+context-free session types, a server that receives a binary tree.
+\cstTreep
+
+The session types {\Aleafp} and {\Abranchp} encode receiving leaf and
+a branch of the binary tree type {\AIntTree}. The session type
+{\Atreep} provides the enclosing recursion and choice between the leaf
+and branch protocols.
+The receiver for the leaf wraps the received value in the {\ACLeaf}
+constructor and stores it in the application state.
+The receiver for the branch obtains the left and right subtrees by
+recursive calls {\ACONTINUE~\Azero} and combines the outcomes using
+the {\ACBranch} constructor.
+
+
 
 \section{Handling multiple channels}
 \label{sec:handl-mult-chann}

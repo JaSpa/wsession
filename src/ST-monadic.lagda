@@ -104,33 +104,33 @@ T⟦ int ⟧ = ℤ
 \end{code}
 \newcommand\mstCommand{%
 \begin{code}
-data Command (A : Set) : Session → Set₂ where
-  END    : Command A end
+data Cmd (A : Set) : Session → Set₂ where
+  END    : Cmd A end
   SKIP   : (∀ {M : Set → Set₁} → {{RawMonad M}} → StateT A M ⊤)
-    → Command A s → Command A s
+    → Cmd A s → Cmd A s
   SEND   : (∀ {M : Set → Set₁} → {{RawMonad M}} → StateT A M T⟦ t ⟧)
-    → Command A s → Command A (send t s)
+    → Cmd A s → Cmd A (send t s)
   RECV   : (∀ {M : Set → Set₁} → {{RawMonad M}} → (T⟦ t ⟧ → StateT A M ⊤))
-    → Command A s → Command A (recv t s)
-  SELECT : ∀ {si} → (i : Fin k) → Command A (si i) → Command A (⊕′ si)
-  CHOICE : ∀ {si} → ((i : Fin k) → Command A (si i)) → Command A (&′ si)
+    → Cmd A s → Cmd A (recv t s)
+  SELECT : ∀ {si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕′ si)
+  CHOICE : ∀ {si} → ((i : Fin k) → Cmd A (si i)) → Cmd A (&′ si)
 \end{code}}
 \newcommand\mstExampleServers{%
 \begin{code}
-addp-command : Command ℤ binaryp
+addp-command : Cmd ℤ binaryp
 addp-command = RECV put $ RECV (modify ∘′ _+_) $ SEND get $ END
 
-negp-command : Command ℤ unaryp
+negp-command : Cmd ℤ unaryp
 negp-command = RECV (put ∘ -_) $ SEND get $ END
 
-arithp-command : Command ℤ arithp
+arithp-command : Cmd ℤ arithp
 arithp-command = CHOICE λ where
   zero → addp-command
   (suc zero) → negp-command
 \end{code}}
 \newcommand\mstExecutor{%
 \begin{code}
-exec : {s : Session} → Command A s → StateT A (ReaderT Channel IO) ⊤
+exec : {s : Session} → Cmd A s → StateT A (ReaderT Channel IO) ⊤
 exec END             = ask >>= liftIO ∘ primClose
 exec (SKIP act cmd)  = act >> exec cmd
 exec (SEND getx cmd) = getx >>= λ x → ask >>= liftIO ∘ primSend x >> exec cmd
@@ -139,10 +139,10 @@ exec (SELECT i cmd)  = ask >>= liftIO ∘ primSend i >> exec cmd
 exec (CHOICE f-cmd)  = ask >>= liftIO ∘ primRecv >>= λ x → exec (f-cmd x)
 \end{code}}
 \newcommand\mstAcceptor{%
-\begin{code}[hide]
+\begin{code}
 record Accepting A s : Set₂ where
   constructor ACC
-  field pgm : Command A s
+  field pgm : Cmd A s
 
 acceptor : Accepting A s → A → IO A
 acceptor (ACC pgm) a = do

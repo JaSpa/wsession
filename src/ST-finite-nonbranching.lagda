@@ -115,51 +115,51 @@ module formatting2 where
 \end{code}
 \newcommand\stBranchingCommand{%
 \begin{code}
-  data Command (A : Set) : Session → Set where
+  data Cmd (A : Set) : Session → Set where
     SELECT : ∀ {si} → (i : Fin k)
-                    → Command A (si i)
-                    → Command A (⊕ si)
+                    → Cmd A (si i)
+                    → Cmd A (⊕ si)
     CHOICE : ∀ {si} → (getl : Fin k → A → A)
-                    → ((i : Fin k) → Command A (si i))
-                    → Command A (& si)
+                    → ((i : Fin k) → Cmd A (si i))
+                    → Cmd A (& si)
 \end{code}}
 \begin{code}[hide]
 module formatting-deselect where
 \end{code}
 \newcommand\stDynamicBranchingCommand{%
 \begin{code}
-  data Command (A : Set) : Session → Set where
+  data Cmd (A : Set) : Session → Set where
     DSELECT : ∀ {si} → (setl : A → A × Fin k)
-                     → ((i : Fin k) → Command A (si i))
-                     → Command A (⊕ si)
+                     → ((i : Fin k) → Cmd A (si i))
+                     → Cmd A (⊕ si)
 \end{code}}
 \newcommand\stCommand{%
 \begin{code}
-data Command (A : Set) : Session → Set where
-  END    : Command A end
-  SEND   : (A → A × T⟦ T ⟧) → Command A S → Command A (‼ T ∙ S)
-  RECV   : (T⟦ T ⟧ → A → A) → Command A S → Command A (⁇ T ∙ S)
+data Cmd (A : Set) : Session → Set where
+  END    : Cmd A end
+  SEND   : (A → A × T⟦ T ⟧) → Cmd A S → Cmd A (‼ T ∙ S)
+  RECV   : (T⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
-  SELECT : ∀ {k si} → (i : Fin k) → Command A (si i) → Command A (⊕ si)
-  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Command A (si i)) → Command A (& si)
+  SELECT : ∀ {k si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕ si)
+  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd A (si i)) → Cmd A (& si)
 \end{code}
 \begin{code}[hide]
-  SELECT2 : (A → Bool × A) → Command A s₁ → Command A s₂ → Command A (select s₁ s₂)
-  CHOICE2 : (Bool → A → ⊤ × A) → Command A s₁ → Command A s₂ → Command A (choice s₁ s₂)
+  SELECT2 : (A → Bool × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (select s₁ s₂)
+  CHOICE2 : (Bool → A → ⊤ × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (choice s₁ s₂)
 
 \end{code}
 \newcommand\stAddpCommand{%
 \begin{code}
-addp-command : Command ℤ binaryp
+addp-command : Cmd ℤ binaryp
 addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ END
 
-negp-command : Command ℤ unaryp
+negp-command : Cmd ℤ unaryp
 negp-command = RECV (λ x a → - x) $ SEND (λ a → ⟨ a , a ⟩) $ END
 \end{code}}
 \newcommand\stArithpCommand{%
 \begin{code}
-arithp-command : Command ℤ arithp
+arithp-command : Cmd ℤ arithp
 arithp-command = CHOICE (const id) λ where
   zero → addp-command
   (suc zero) → negp-command
@@ -168,14 +168,14 @@ arithp-command = CHOICE (const id) λ where
 \begin{code}
 postulate
   Channel : Set
-  primAccept : IO Channel
-  primClose  : Channel → IO ⊤
-  primSend   : A → Channel → IO ⊤
-  primRecv   : Channel → IO A
+  primAccept : IO Channel         -- accept a connection, return a new channel
+  primClose  : Channel → IO ⊤     -- close a connection
+  primSend   : A → Channel → IO ⊤ -- send value of type A
+  primRecv   : Channel → IO A     -- receive value of type A
 \end{code}}
 \newcommand\stExecutorSignature{%
 \begin{code}
-exec : {s : Session} → Command A s → (init : A) → Channel → IO A
+exec : {s : Session} → Cmd A s → (init : A) → Channel → IO A
 \end{code}}
 \newcommand\stExecutor{%
 \begin{code}
@@ -215,7 +215,7 @@ exec (CHOICE2 putx cmd₁ cmd₂) state ch = do
 \begin{code}
 record Accepting A s : Set where
   constructor ACC
-  field cmd : Command A s
+  field cmd : Cmd A s
 
 acceptor : Accepting A s → A → IO A
 acceptor (ACC cmd) a = primAccept >>= exec cmd a
@@ -242,16 +242,16 @@ fffun true = 42
 ΣB A₁ A₂ = Σ _ (ifb A₁ A₂)
 
 
-data Command′ (A : Set) : Set → Session → Set₁ where
-  END    : Command′ A A end
-  SEND   : (A → T⟦ t ⟧ × A′) → Command′ A′ A″ s → Command′ A A″ (send t s)
-  RECV   : (T⟦ t ⟧ → A → A′) → Command′ A′ A″ s → Command′ A A″ (recv t s)
-  SELECT21 : (A → A₁ ⊎ A₂) → Command′ A₁ A″ s₁ → Command′ A₂ A″ s₂ → Command′ A A″ (select s₁ s₂)
-  CHOICE21 : ((x : Bool) → A → (case x of λ{false → A₁; true → A₂})) → Command′ A₁ A″ s₁ → Command′ A₂ A″ s₂ → Command′ A A″ (choice s₁ s₂)
+data Cmd′ (A : Set) : Set → Session → Set₁ where
+  END    : Cmd′ A A end
+  SEND   : (A → T⟦ t ⟧ × A′) → Cmd′ A′ A″ s → Cmd′ A A″ (send t s)
+  RECV   : (T⟦ t ⟧ → A → A′) → Cmd′ A′ A″ s → Cmd′ A A″ (recv t s)
+  SELECT21 : (A → A₁ ⊎ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
+  CHOICE21 : ((x : Bool) → A → (case x of λ{false → A₁; true → A₂})) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (choice s₁ s₂)
 
-  SELECT22 : (A → ΣB A₁ A₂) → Command′ A₁ A″ s₁ → Command′ A₂ A″ s₂ → Command′ A A″ (select s₁ s₂)
+  SELECT22 : (A → ΣB A₁ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
 
-exec′ : {s : Session} → Command′ A A″ s → (init : A) → Channel → IO A″
+exec′ : {s : Session} → Cmd′ A A″ s → (init : A) → Channel → IO A″
 exec′ END state ch = do
   primClose ch
   pure state

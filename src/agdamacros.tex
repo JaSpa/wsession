@@ -6,6 +6,10 @@
 \newcommand\Atend{\AgdaInductiveConstructor{end}}
 \newcommand\Atsend[2]{\AgdaInductiveConstructor{‼{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
 \newcommand\Atrecv[2]{\AgdaInductiveConstructor{⁇{\textcolor{black}{\ensuremath{#1}}}∙{\textcolor{black}{\ensuremath{#2}}}}}
+\newcommand\Atcfsend[1]{\AgdaInductiveConstructor{‼{\textcolor{black}{\ensuremath{#1}}}}}
+\newcommand\Atcfrecv[1]{\AgdaInductiveConstructor{⁇{\textcolor{black}{\ensuremath{#1}}}}}
+\newcommand\Atcfcomp[2]{\AgdaInductiveConstructor{{\textcolor{black}{\ensuremath{#1}}}⨟{\textcolor{black}{\ensuremath{#2}}}}}
+\newcommand\Atcfskip{\AgdaInductiveConstructor{skip}}
 \newcommand\ACSKIP{\AgdaInductiveConstructor{SKIP}}
 \newcommand\ACEND{\AgdaInductiveConstructor{END}}
 \newcommand\ACSEND{\AgdaInductiveConstructor{SEND}}
@@ -13,8 +17,8 @@
 \newcommand\ACSELECT{\AgdaInductiveConstructor{SELECT}}
 \newcommand\ACCHOICE{\AgdaInductiveConstructor{CHOICE}}
 \newcommand\AFin{\AgdaDatatype{Fin}}
-\newcommand\ACommand{\AgdaDatatype{Command}}
-\newcommand\ACommandStore{\AgdaDatatype{CommandStore}}
+\newcommand\ACommand{\AgdaDatatype{Cmd}}
+\newcommand\ACommandStore{\AgdaDatatype{CmdStore}}
 \newcommand\ASession{\AgdaDatatype{Session}}
 \newcommand\Abinaryp{\AgdaFunction{binaryp}}
 \newcommand\Aunaryp{\AgdaFunction{unaryp}}
@@ -27,12 +31,21 @@
 \newcommand\Aback{\AgdaInductiveConstructor{\ensuremath{`}}}
 \newcommand\Amanyunaryp{\AgdaFunction{many-unaryp}}
 \newcommand\Arestart{\AgdaFunction{restart}}
+\newcommand\ASerialize{\AgdaRecord{Serialize}}
 \newcommand\ARawMonad{\AgdaRecord{RawMonad}}
 \newcommand\AStateT{\AgdaRecord{StateT}}
 \newcommand\Aput{\AgdaFunction{put}}
 \newcommand\Amodify{\AgdaFunction{modify}}
 \newcommand\Aget{\AgdaFunction{get}}
 \newcommand\Aid{\AgdaFunction{id}}
+\newcommand\AprimSend{\AgdaFunction{primSend}}
+\newcommand\AprimRecv{\AgdaFunction{primRecv}}
+\newcommand\Aleafp{\AgdaFunction{leafp}}
+\newcommand\Abranchp{\AgdaFunction{branchp}}
+\newcommand\Atreep{\AgdaFunction{treep}}
+\newcommand\AIntTree{\AgdaDatatype{IntTree}}
+\newcommand\ACLeaf{\AgdaInductiveConstructor{Leaf}}
+\newcommand\ACBranch{\AgdaInductiveConstructor{Branch}}
 
 %%% Local Variables:
 %%% mode: latex

@@ -119,39 +119,39 @@ module formatting2 where
 \end{code}
 \newcommand\rstBranchingCommand{%
 \begin{code}
-  -- data Command (A : Set) : Session n → Set where
+  -- data Cmd (A : Set) : Session n → Set where
   --   SELECT : ∀ {si} → (setl : A → Fin k × A)
-  --                   → ((i : Fin k) → Command A (si i))
-  --                   → Command A (⊕ si)
+  --                   → ((i : Fin k) → Cmd A (si i))
+  --                   → Cmd A (⊕ si)
   --   CHOICE : ∀ {si} → (getl : Fin k → A → A)
-  --                   → ((i : Fin k) → Command A (si i))
-  --                   → Command A (& si)
+  --                   → ((i : Fin k) → Cmd A (si i))
+  --                   → Cmd A (& si)
 \end{code}}
 \newcommand\rstCommand{%
 \begin{code}
-data Command n (A : Set) : Session n → Set where
-  LOOP     : Command (suc n) A s → Command n A (μ s)
-  CONTINUE : (i : Fin n) → Command n A (` i)
+data Cmd n (A : Set) : Session n → Set where
+  LOOP     : Cmd (suc n) A s → Cmd n A (μ s)
+  CONTINUE : (i : Fin n) → Cmd n A (` i)
 \end{code}}
 \begin{code}[hide]
-  END    : Command n A end
-  SEND   : (A → A × T⟦ T ⟧) → Command n A S → Command n A (‼ T ∙ S)
-  RECV   : (T⟦ T ⟧ → A → A) → Command n A S → Command n A (⁇ T ∙ S)
-  SELECT : ∀ {k si} → (i : Fin k) → Command n A (si i) → Command n A (⊕′ si)
-  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Command n A (si i)) → Command n A (&′ si)
+  END    : Cmd n A end
+  SEND   : (A → A × T⟦ T ⟧) → Cmd n A S → Cmd n A (‼ T ∙ S)
+  RECV   : (T⟦ T ⟧ → A → A) → Cmd n A S → Cmd n A (⁇ T ∙ S)
+  SELECT : ∀ {k si} → (i : Fin k) → Cmd n A (si i) → Cmd n A (⊕′ si)
+  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd n A (si i)) → Cmd n A (&′ si)
 \end{code}
 \newcommand\rstAddpCommand{%
 \begin{code}
-addp-command : Command n ℤ s → Command n ℤ (binaryp s)
+addp-command : Cmd n ℤ s → Cmd n ℤ (binaryp s)
 addp-command cmd = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
 
 \end{code}}
 \newcommand\rstSumupCommand{%
 \begin{code}
-addup-command : Command n ℤ s → Command n ℤ (unaryp s)
+addup-command : Cmd n ℤ s → Cmd n ℤ (unaryp s)
 addup-command cmd = RECV (λ x a → x + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
 
-sumup-command : Command 0 ℤ many-unaryp
+sumup-command : Cmd 0 ℤ many-unaryp
 sumup-command = LOOP $ CHOICE (λ _ a → a) λ where
   zero → addup-command (CONTINUE zero)
   (suc zero) → END
@@ -167,27 +167,27 @@ postulate
 \end{code}}
 \newcommand\rstCommandStore{%
 \begin{code}
-CommandStore : ∀ n → Set → Set
-CommandStore n A = (i : Fin n) → ∃[ s ] (Command (suc (toℕ (opposite i))) A s)
+CmdStore : ∀ n → Set → Set
+CmdStore n A = (i : Fin n) → ∃[ s ] (Cmd (suc (toℕ (opposite i))) A s)
 \end{code}}
 \newcommand\rstPops{%
 \begin{code}
-pop1 : ∀{n} → CommandStore (suc n) A → CommandStore n A
-pop : CommandStore (suc n) A → (i : Fin (suc n)) → CommandStore (suc (toℕ (opposite i))) A
+pop1 : ∀{n} → CmdStore (suc n) A → CmdStore n A
+pop : CmdStore (suc n) A → (i : Fin (suc n)) → CmdStore (suc (toℕ (opposite i))) A
 \end{code}}
 \begin{code}[hide]
 pop1 cms i with cms (suc i)
 ... | cms₁ rewrite toℕ-inject₁ (opposite i) = cms₁
 
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
-pop {suc n} cms (suc i) = subst (λ H → CommandStore (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
+pop {suc n} cms (suc i) = subst (λ H → CmdStore (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
 \end{code}
 \begin{code}[hide]
 module alternative-executor where
-  exec : Command n A s → CommandStore n A → (init : A) → Channel
-    → IO (∃[ n ] (CommandStore (suc n) A × A) ⊎ A)
+  exec : Cmd n A s → CmdStore n A → (init : A) → Channel
+    → IO (∃[ n ] (CmdStore (suc n) A × A) ⊎ A)
   exec {n = n} {A = A} {s = μ s} (LOOP cmd) cms st ch = exec cmd cms′ st ch
-    where cms′ : CommandStore (suc n) A
+    where cms′ : CmdStore (suc n) A
           cms′ zero    rewrite toℕ-fromℕ n = ⟨ s , cmd ⟩
           cms′ (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
@@ -213,7 +213,7 @@ module alternative-executor where
 \newcommand\rstAlternativeExecutorRestart{%
 \begin{code}
   CmdCont : Set → Set
-  CmdCont A = ∃[ n ] (CommandStore (suc n) A × A)
+  CmdCont A = ∃[ n ] (CmdStore (suc n) A × A)
 
   restart : CmdCont A → Channel → IO (CmdCont A ⊎ A)
   restart ⟨ n , ⟨ cms , st ⟩ ⟩ ch
@@ -223,7 +223,7 @@ module alternative-executor where
 \newcommand\rstExecutorSignature{%
 \begin{code}
 Gas = ℕ
-exec : Gas → Command n A s → CommandStore n A → (init : A) → Channel → IO A
+exec : Gas → Cmd n A s → CmdStore n A → (init : A) → Channel → IO A
 \end{code}}
 \begin{code}[hide]
 exec k END cms state ch = do
@@ -248,7 +248,7 @@ exec k (CHOICE putx f-cmd) cms state ch = do
 \newcommand\rstExecutor{%
 \begin{code}
 exec {n = n} {A = A} {s = μ s} k (LOOP cmd) cms state ch = exec k cmd cms′ state ch
-  where cms′ : CommandStore (suc n) A
+  where cms′ : CmdStore (suc n) A
         cms′ zero    rewrite toℕ-fromℕ n = ⟨ s , cmd ⟩
         cms′ (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
 exec {suc n} {A} zero (CONTINUE i) cms state ch = pure state -- hack alert!
@@ -260,7 +260,7 @@ exec {suc n} {A} (suc k) (CONTINUE i) cms state ch
 \begin{code}
 record Accepting {n} A s : Set where
   constructor ACC
-  field cmd : Command n A s
+  field cmd : Cmd n A s
 
 acceptor : {s : Session 0} → Gas → Accepting A s → A → IO A
 acceptor k (ACC cmd) a = primAccept >>= exec k cmd (λ()) a

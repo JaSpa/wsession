@@ -16,6 +16,8 @@ open import Function.Base using (case_of_; _∘_; const; _$_; id)
 
 open import IO
 
+open import Utils
+
 
 pattern [_] x = x ∷ []
 pattern [_,_] x y = x ∷ y ∷ []
@@ -39,7 +41,7 @@ module formatting1 where
 \newcommand\stBranchingType{%
 \begin{code}
   data Session : Set where
-    ⊕ & : ∀ {k} → (si : (i : Fin k) → Session) → Session
+    ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session) → Session
 \end{code}}
 \newcommand\stFiniteSession{%
 \begin{code}
@@ -48,7 +50,7 @@ data Session : Set where
   end : Session
 \end{code}}
 \begin{code}[hide]
-  ⊕ & : ∀ {k} → (si : (i : Fin k) → Session) → Session
+  ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session) → Session
 \end{code}
 \begin{code}[hide]
   sel chc : ∀{k} → Vec Session k → Session
@@ -59,19 +61,11 @@ pattern send t s = ‼ t ∙ s
 
 infixr 20 ‼_∙_ ⁇_∙_
 
+⊕ : Vec Session n → Session
+⊕ = ⊕′ ∘ vec→fin
 
-vec→fin : Vec Session k → (Fin k → Session)
-vec→fin {zero} [] = λ()
-vec→fin {suc n} (x ∷ v) = λ where
-  zero → x
-  (suc i) → vec→fin v i
-
-⊕′ : Vec Session n → Session
-⊕′ = ⊕ ∘ vec→fin
-
-&′ : Vec Session n → Session
-&′ = & ∘ vec→fin
-  
+& : Vec Session n → Session
+& = &′ ∘ vec→fin
 
 -- service protocol for a binary function
 binaryp : Session
@@ -87,10 +81,10 @@ unaryp = ⁇ int ∙ ‼ int ∙ end
 \end{code}}
 \newcommand\stExampleArithP{%
 \begin{code}
-arithp = &′ [ binaryp , unaryp ]
+arithp = & [ binaryp , unaryp ]
 \end{code}}
 \begin{code}[hide]
-arithp-raw = & {2} (λ{ zero → binaryp ; (suc zero) → unaryp})
+arithp-raw = &′ {2} (λ{ zero → binaryp ; (suc zero) → unaryp})
 
 arithpv : Session
 arithpv = chc (binaryp ∷ (unaryp ∷ []))
@@ -118,10 +112,10 @@ module formatting2 where
   data Cmd (A : Set) : Session → Set where
     SELECT : ∀ {si} → (i : Fin k)
                     → Cmd A (si i)
-                    → Cmd A (⊕ si)
+                    → Cmd A (⊕′ si)
     CHOICE : ∀ {si} → (getl : Fin k → A → A)
                     → ((i : Fin k) → Cmd A (si i))
-                    → Cmd A (& si)
+                    → Cmd A (&′ si)
 \end{code}}
 \begin{code}[hide]
 module formatting-deselect where
@@ -131,7 +125,7 @@ module formatting-deselect where
   data Cmd (A : Set) : Session → Set where
     DSELECT : ∀ {si} → (setl : A → A × Fin k)
                      → ((i : Fin k) → Cmd A (si i))
-                     → Cmd A (⊕ si)
+                     → Cmd A (⊕′ si)
 \end{code}}
 \newcommand\stCommand{%
 \begin{code}
@@ -141,8 +135,8 @@ data Cmd (A : Set) : Session → Set where
   RECV   : (T⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
-  SELECT : ∀ {k si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕ si)
-  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd A (si i)) → Cmd A (& si)
+  SELECT : ∀ {k si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕′ si)
+  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd A (si i)) → Cmd A (&′ si)
 \end{code}
 \begin{code}[hide]
   SELECT2 : (A → Bool × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (select s₁ s₂)

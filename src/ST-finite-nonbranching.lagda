@@ -147,9 +147,11 @@ data Cmd (A : Set) : Session → Set where
 \begin{code}
 addp-command : Cmd ℤ binaryp
 addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ END
-
-negp-command : Cmd ℤ unaryp
-negp-command = RECV (λ x a → - x) $ SEND (λ a → ⟨ a , a ⟩) $ END
+\end{code}}
+\newcommand\stNegpCommand{%
+\begin{code}
+negp-command : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
+negp-command = RECV (λ x _ → x) $ SEND (λ a → ⟨ a , - a ⟩) $ END
 \end{code}}
 \newcommand\stArithpCommand{%
 \begin{code}
@@ -169,7 +171,7 @@ postulate
 \end{code}}
 \newcommand\stExecutorSignature{%
 \begin{code}
-exec : {s : Session} → Cmd A s → (init : A) → Channel → IO A
+exec : {s : Session} → Cmd A s → A → Channel → IO A
 \end{code}}
 \newcommand\stExecutor{%
 \begin{code}

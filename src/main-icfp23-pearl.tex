@@ -2,6 +2,7 @@
 
 \usepackage{agda}
 \usepackage{stmaryrd}
+\usepackage{listings}
 
 %% There is a limit of 25 pages for a full paper or Functional Pearl
 %% and 12 pages for an Experience Report; in either case, the
@@ -67,6 +68,23 @@
 %% end of the preamble, start of the body of the document source.
 \input{unicodeletters}
 \input{agdamacros}
+
+%% listings
+\lstset{
+  language=haskell,
+  basicstyle=\ttfamily,
+  morekeywords={send,recv,close,send_on_,receive,End,Int,Chan},
+  captionpos=b,
+  literate=
+  {-o}{${\multimap}$}1
+  {ex}{$\exists$}1
+  {all}{$\forall$}1
+  {\\x}{$\times$}1
+  %{(x)}{$\otimes$}1
+  {fresh}{$\lozenge$}1
+  {~~}{$\approx$}1
+}
+
 \begin{document}
 
 %%
@@ -163,48 +181,190 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Session types provide a type discipline for structured communication
-in concurrent programming systems.
+\input{latex/ST-finite-nonbranching.tex}
 
-We concentrate on binary session types, although our proposal should
-be extensible to the multi-party setting.
+Session types provide a type discipline for protocols
+in concurrent programming systems. Each session type operator
+describes the direction of communication and the type of the
+payload (the transmitted value). Moreover, there are ways to specify
+control structures for protocols like sequencing, branching, and
+looping.
 
-For a long time, session types were inextricably connected to linear
-types. This connection has affected their implementation and widespread
-adoption. Languages constructed around session types embrace linearity
-and their type checker rejects violations thereof. Examples: Links,
-Sepi, Sill, C0, more?
+Honda and others
+\cite{DBLP:conf/concur/Honda93,DBLP:conf/parle/TakeuchiHK94,DBLP:conf/esop/HondaVK98}
+started the investigation of session types originally in the context
+of the pi-calculus \cite{DBLP:journals/iandc/MilnerPW92a}. Later the concepts were adapted to other programming
+paradigms like functional programming
+\cite{DBLP:journals/tcs/VasconcelosGR06,DBLP:journals/jfp/GayV10} and
+object-oriented programming
+\cite{DBLP:conf/europar/RavaraV97,DBLP:journals/corr/abs-1205-5344}. 
+
+The early works concentrated on binary session types, i.e., protocols
+with two parties. Subsequently, multi-party session types were
+proposed \cite{DBLP:journals/jacm/HondaYC16} that relax the
+restriction to two parties. The Betty project resulted in several survey articles
+and books that provide a good overview of the field
+\cite{gay17:_behav_types,DBLP:journals/csur/HuttelLVCCDMPRT16,DBLP:journals/jlp/BartolettiCDDGP15,DBLP:journals/ftpl/AnconaBB0CDGGGH16}. 
+For this paper, we mostly focus the discussion on the binary case, but draw some
+inspiration from multi-party session types.
+
+
+Session types are inextricably connected to linear types via the
+Curry-Howard correspondence. This connection has been discovered and
+investigated in quite some depth
+\cite{DBLP:conf/concur/CairesP10,DBLP:journals/mscs/CairesPT16,DBLP:journals/jfp/Wadler14}
+along with many ramifications \cite{DBLP:journals/pacmpl/BalzerP17}. 
+Moreover, this connection is not just of theoretical interest, but it
+has affected the implementation and (one could argue) hampered widespread
+adoption. Languages constructed around session types are usually
+special purpose languages that embrace linearity so that their type
+checker rejects violations thereof. Examples are plenty: Links \cite{lindley17:_light_funct_session_types},
+Sepi \cite{DBLP:conf/sefm/FrancoV13,DBLP:conf/sfm/Vasconcelos09}, Sill
+\cite{DBLP:conf/esop/ToninhoCP13}, C0
+\cite{DBLP:journals/corr/WillseyPP17}, and so on.
 While these languages and their implementation have fostered research
-and encouraged experimentation, these languages are not widely used.
+and encouraged experimentation, they are not widely used.
 
 To boost the use of session types, 
 a lot of work is dedicated to embedding session types in mainstream
 languages, most of which do not have native support for linearity. 
-(Plenty of examples with different trade-offs.)
+There are plenty of examples for such embeddings for functional languages
+like
+Haskell \cite{DBLP:conf/padl/NeubauerT04,SackmanE08,
+  DBLP:conf/haskell/PucellaT08} and
+OCaml \cite{DBLP:journals/jfp/Padovani17,DBLP:journals/scp/ImaiYY19},
+as well as object-oriented languages like
+C\# \cite{DBLP:journals/corr/abs-2004-01325},
+Scala \cite{DBLP:conf/ecoop/ScalasY16},
+Java \cite{DBLP:conf/ecoop/HuYH08}. Most of these approaches ignore
+the issue of linearity at compile time; some ignore it entirely. Some (e.g., \cite{DBLP:journals/jfp/Padovani17}) rely
+on run-time checks, others rely on encodings of linearity using lenses
+\cite{DBLP:journals/jip/ImaiG19} or monads \cite{DBLP:conf/haskell/PucellaT08}
+There are also extension languages with a separate checker that add
+sessions \cite{DBLP:conf/coordination/NgYPHK11} or, more generally,
+typestate \cite{DBLP:journals/scp/KouzapasDPG18} to an underlying Java program.
 
-Recent work on multi-party session types suggests an alternative
-approach, reminiscent of the inversion of control approach which is
-familiar to programmer from GUI programming. The system described in
-that paper compiles a description of a multi-party session type into
+Recent work on multi-party session types
+\cite{DBLP:conf/cc/Miu0Y021,DBLP:journals/pacmpl/00020HNY20} suggests
+an alternative approach that does not rely on linearity. It is
+inspired by the design principle \emph{inversion of control} which is
+familiar to programmers from GUI programming. The systems described in
+those works translate a description of a multi-party session type into
 a library that encapsulates the implementation of all
 communication. For each communication action, the library provides an
 interface where the programmer specifies a callback function for this
 particular action.
 
-We show how to apply this idea to binary session types in the context
-of dependently-typed functional programming. Our vehicle is the
-language Agda, so that our development is transferrable to Haskell,
-either via compilation or via translation
-\cite{DBLP:conf/haskell/CockxME0N22}.
+To clarify this idea, we give a very simple example, continued and
+extended in Section~\ref{sec:finite-nonbr-simple}, in the context of a
+functional language. Unlike the cited
+work, our work as well as this example rely on \emph{binary} session
+types. We start with the following grammar for types $T$ and session
+types $S$.
+\begin{align*}
+  T &::= \Aint \mid \Abool  & S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend
+\end{align*}
+The session type $\Atsend{T}{S}$ ($\Atrecv{T}{S}$) describes a channel that is ready to send (receive)
+a value of payload type $T$ and the continue as $S$. The session type
+$\Atend$ describes a channel that can only be closed.
 
-TODO: Mention TCB (trusted computing base) in connection to linearity.
+\begin{description}
+\item[Traditional setting] (cf.\ \cite{DBLP:journals/jfp/GayV10}) The
+  traditional interface to session-typed communication consists of primitive
+  operations like
+  \begin{align*}
+  \mathtt{send} & : \Atsend{T}{S} \otimes T \multimap S &
+                                                   \mathtt{recv} &:
+                                                                   \Atrecv{T}{S}
+                                                                   \multimap
+                                                                   (T
+                                                                   \otimes
+                                                                   S)
+    & \mathtt{close} &: \Atend \multimap ()
+  \end{align*}
+  that send on a channel, receive from a channel, and close a channel.
+  The crucial observation is that the type system must treat channels
+  linearly to ensure protocol fidelity.
 
-TODO: contribution dynamic selector
+  Programs typically look like this:
+\begin{lstlisting}
+negp-server : ?int.!int.end -o ()
+negp-server  c0 =                    -- c0 : ?int.!int.end
+  let (x, c1) = recv c0 in           -- c1 :      !int.end
+  let c2 = send (c1, -x) in          -- c2 :           end
+  close c2
+\end{lstlisting}
+By linearity, the \texttt{recv} operation consumes \texttt{c0};
+otherwise, another \texttt{recv} could be applied, thus breaking the
+protocol.
+Analogous arguments apply to \texttt{c1} and \texttt{c2}.
+\item[Callback approach] The callback interface to session-typed
+  communication proposed in this work consists of a datatype of commands, {\ACommand}, indexed by an
+  application state $A$ and a
+  session type. Moreover, there is an encapsulated interpreter
+  {\Aexecutor} to  execute commands.\footnote{For all details see Section~\ref{sec:finite-nonbr-simple}.} 
+\stCommand
+
+  The {\ACSEND} command has a callback to obtain the value to be sent
+  from the application state. Similarly, the {\ACRECV} command has a
+  callback to inject the received value in the application state. Both
+  take a continuation command of type {\ACommand~$A$~$S$} that deals
+  with the continuation session $S$.
+
+  A program looks similar to the traditional one where we choose
+  {\AZ}, the integers, as the application state.
+\stNegpCommand
+
+  The least sophisticated interpreter takes a command, a suitable
+  initial application state, an untyped channel, and results in an IO
+  action that produces the final application state.
+\stExecutorSignature
+
+  This interpreter is implemented once and for all in an encapsulated
+  library. In a sense, it forms the trusted computing base of our
+  approach, as we have the obligation to prove that it performs the
+  commands on the channel according to the session type index of the
+  channel. 
+\end{description}
+
+\subsection{Contributions}
+\label{sec:contributions}
+
+\begin{itemize}
+\item We show how to deploy the callback approach to binary session
+  types in the context of dependently-typed functional
+  programming. Our vehicle is the language Agda, but we expect that our
+  development is transferrable to Haskell, either via compilation or via translation
+  \cite{DBLP:conf/haskell/CockxME0N22}.
+\item We demonstrate that the approach extends to most familiar
+  session type constructions: branching
+  (Section~\ref{sec:select-choice}), recursion
+  (Section~\ref{sec:going-circles}), higher-order sessions.
+\item The extension to operate on multiple channels is significant and
+  mostly orthogonal to the other features. Interestingly, it requires
+  several elements of multiparty session types.
+\item We propose a new dynamic selection operation in the context of
+  branching session types (Section~\ref{sec:select-choice}).
+\item We extend the callback approach to context-free session types
+  (with branching and recursion), which in turn requires a more
+  sophisticated, dependently-typed encoding of commands than regular
+  session types.
+\item All our session type systems inherit the polymorphism from their
+  host language, Agda.
+\item For monad lovers we describe version with a monadic encoding of callbacks.
+\end{itemize}
+
+The source of this document refers to a number of literate Agda
+scripts which will be submitted as an anonymized supplement (to be
+turned into an artifact).
+
+Working knowledge of Agda would be perfect for understanding the
+paper, but we strive to make the code accessible to readers who are
+knowledgable in Haskell.
 
 \section{Finite nonbranching session types}
 \label{sec:finite-nonbr-simple}
 
-\input{latex/ST-finite-nonbranching.tex}
 
 Let's start straight away with the simplest instance, finite
 nonbranching simple session types, to convey the
@@ -272,6 +432,7 @@ Continuing our example, we define commands that implement a server
 for the protocols {\Abinaryp} and {\Aunaryp} with the operation instantiated to
 addition and negation, respectively.
 \stAddpCommand
+\stNegpCommand
 We use explicit lambda abstraction instead of (more fancy) combinators
 for clarity; the variable $a$ stands for the application state and $x$ and $y$ for
 the respective values received from the channel. 
@@ -662,17 +823,6 @@ now turn to lifting this restriction.
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Command fragments}
-\label{sec:command-fragments}
-
-
-Instead of having commands indexed by session types, we could have
-\emph{command fragments} indexed by transformations of session types
-($S \to S$). Everything is definable in this way, but defining
-protocols is awkward as the type checker is unable to provide
-guidance.
-
-Here is an example: (elaborate)
 
 \subsection{Selection and choice with vectors}
 \label{sec:select-choice-with}
@@ -684,6 +834,23 @@ straightforwardly to the definition of {\ACommand} where the {\ASession} index o
 continuation command depends on the function argument $i : \AFin~n$.
 We would have to define a special vectors type to achieve similar
 expressivity. 
+
+\subsection{Code generation}
+\label{sec:code-generation}
+
+Instead of interpreting a command value, we could compile it to a
+custom library, following the lead of the related work
+\cite{DBLP:journals/pacmpl/00020HNY20,DBLP:conf/cc/Miu0Y021}.
+We leave such a compiler to future work.
+
+\subsection{Multiparty session types}
+\label{sec:mult-sess-types}
+
+We see no issues in extending the approach presented in this work to
+protocols with more than two participants. We refrained from doing so
+in this work to avoid the extra
+complication. Section~\ref{sec:handl-mult-chann} already gives some
+insight into the requirements for a multiparty version.
 
 %%
 %% The acknowledgments section is defined using the "acks" environment

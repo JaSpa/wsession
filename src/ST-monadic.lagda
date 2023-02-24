@@ -102,15 +102,22 @@ T⟦ nat ⟧ = ℕ
 T⟦ bool ⟧ = Bool
 T⟦ int ⟧ = ℤ
 \end{code}
+\newcommand\mstMonadic{%
+\begin{code}
+Monadic : ((Set → Set₁) → Set₁) → Set₂
+Monadic f = ∀ {M : Set → Set₁} → {{RawMonad M}} → f M
+
+syntax Monadic (λ M → X) = Monad M ⇒ X
+\end{code}}
 \newcommand\mstCommand{%
 \begin{code}
 data Cmd (A : Set) : Session → Set₂ where
   END    : Cmd A end
-  SKIP   : (∀ {M : Set → Set₁} → {{RawMonad M}} → StateT A M ⊤)
+  SKIP   : (Monad M ⇒ StateT A M ⊤)
     → Cmd A s → Cmd A s
-  SEND   : (∀ {M : Set → Set₁} → {{RawMonad M}} → StateT A M T⟦ t ⟧)
+  SEND   : (Monad M ⇒ StateT A M T⟦ t ⟧)
     → Cmd A s → Cmd A (send t s)
-  RECV   : (∀ {M : Set → Set₁} → {{RawMonad M}} → (T⟦ t ⟧ → StateT A M ⊤))
+  RECV   : (Monad M ⇒ (T⟦ t ⟧ → StateT A M ⊤))
     → Cmd A s → Cmd A (recv t s)
   SELECT : ∀ {si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕′ si)
   CHOICE : ∀ {si} → ((i : Fin k) → Cmd A (si i)) → Cmd A (&′ si)

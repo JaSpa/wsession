@@ -97,15 +97,17 @@ T⟦ int ⟧ = ℤ
 Monadic : ((Set → Set₁) → Set₁) → Set₂
 Monadic f = ∀ {M : Set → Set₁} → {{RawMonad M}} → f M
 
+syntax Monadic (λ M → X) = Monad M ⇒ X
+
 data Cmd n (A : Set) : Session n → Set₂ where
-  SKIP   : (Monadic λ M → StateT A M ⊤) → Cmd n A skip
-  SEND   : (Monadic λ M → StateT A M T⟦ t ⟧) → Cmd n A (‼ t)
-  RECV   : (Monadic λ M → (T⟦ t ⟧ → StateT A M ⊤)) → Cmd n A (⁇ t)
-  SELECT : ∀ {si} → (Monadic λ M → StateT A M (Fin k))
+  SKIP   : (Monad M ⇒ StateT A M ⊤) → Cmd n A skip
+  SEND   : (Monad M ⇒ StateT A M T⟦ t ⟧) → Cmd n A (‼ t)
+  RECV   : (Monad M ⇒ (T⟦ t ⟧ → StateT A M ⊤)) → Cmd n A (⁇ t)
+  SELECT : ∀ {si} → (Monad M ⇒ StateT A M (Fin k))
                   → ((i : Fin k) → Cmd n A (si i))
                   → Cmd n A (⊕′ si)
   CHOICE : ∀ {si} → ((i : Fin k) → Cmd n A (si i)) → Cmd n A (&′ si)
-  _⨟[_]_    : Cmd n A s₁ → (A → A → A) → Cmd n A s₂ → Cmd n A (s₁ ⨟ s₂)
+  _⨟[_]_ : Cmd n A s₁ → (A → A → A) → Cmd n A s₂ → Cmd n A (s₁ ⨟ s₂)
   LOOP   : Cmd (suc n) A s → Cmd n A (μ s)
   CONTINUE : (i : Fin n) → Cmd n A (` i)
 \end{code}}

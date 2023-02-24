@@ -6,7 +6,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ; 0ℤ; _+_; -_)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; Σ; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
+open import Data.Product using (_×_; Σ; proj₁; proj₂; <_,_>) renaming (_,_ to ⟨_,_⟩)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Vec using (Vec; []; _∷_)
 
@@ -30,7 +30,8 @@ variable
 \newcommand\stFiniteType{%
 \begin{code}
 data Type : Set where
-  int bool : Type
+  int : Type
+  bool : Type
 \end{code}}
 \begin{code}[hide]
   nat : Type
@@ -41,16 +42,19 @@ module formatting1 where
 \newcommand\stBranchingType{%
 \begin{code}
   data Session : Set where
-    ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session) → Session
+    ⊕′ : (Si : (i : Fin k) → Session) → Session
+    &′ : (Si : (i : Fin k) → Session) → Session
 \end{code}}
 \newcommand\stFiniteSession{%
 \begin{code}
 data Session : Set where
-  ‼_∙_ ⁇_∙_ : Type → Session → Session
+  ‼_∙_ : Type → Session → Session
+  ⁇_∙_ : Type → Session → Session
   end : Session
 \end{code}}
 \begin{code}[hide]
-  ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session) → Session
+  ⊕′ : ∀ {k} → (Si : (i : Fin k) → Session) → Session
+  &′ : ∀ {k} → (Si : (i : Fin k) → Session) → Session
 \end{code}
 \begin{code}[hide]
   sel chc : ∀{k} → Vec Session k → Session
@@ -110,12 +114,8 @@ module formatting2 where
 \newcommand\stBranchingCommand{%
 \begin{code}
   data Cmd (A : Set) : Session → Set where
-    SELECT : ∀ {si} → (i : Fin k)
-                    → Cmd A (si i)
-                    → Cmd A (⊕′ si)
-    CHOICE : ∀ {si} → (getl : Fin k → A → A)
-                    → ((i : Fin k) → Cmd A (si i))
-                    → Cmd A (&′ si)
+    SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
+    CHOICE : ∀ {Si} → ((i : Fin k) → Cmd A (Si i)) → Cmd A (&′ Si)
 \end{code}}
 \begin{code}[hide]
 module formatting-deselect where
@@ -123,9 +123,9 @@ module formatting-deselect where
 \newcommand\stDynamicBranchingCommand{%
 \begin{code}
   data Cmd (A : Set) : Session → Set where
-    DSELECT : ∀ {si} → (setl : A → A × Fin k)
-                     → ((i : Fin k) → Cmd A (si i))
-                     → Cmd A (⊕′ si)
+    DSELECT : ∀ {Si} → (getl : A → A × Fin k)
+                     → ((i : Fin k) → Cmd A (Si i))
+                     → Cmd A (⊕′ Si)
 \end{code}}
 \newcommand\stCommand{%
 \begin{code}
@@ -135,8 +135,8 @@ data Cmd (A : Set) : Session → Set where
   RECV   : (T⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
-  SELECT : ∀ {k si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕′ si)
-  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd A (si i)) → Cmd A (&′ si)
+  SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
+  CHOICE : ∀ {Si} → ((i : Fin k) → Cmd A (Si i)) → Cmd A (&′ Si)
 \end{code}
 \begin{code}[hide]
   SELECT2 : (A → Bool × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (select s₁ s₂)
@@ -148,15 +148,25 @@ data Cmd (A : Set) : Session → Set where
 addp-command : Cmd ℤ binaryp
 addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ END
 \end{code}}
+\newcommand\stAddpCommandAlternative{%
+\begin{code}
+addp-command′ : Cmd ℤ binaryp
+addp-command′ = RECV const $ RECV _+_ $ SEND < id , id > $ END
+\end{code}}
 \newcommand\stNegpCommand{%
 \begin{code}
 negp-command : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
-negp-command = RECV (λ x _ → x) $ SEND (λ a → ⟨ a , - a ⟩) $ END
+negp-command = RECV (λ x a → x) $ SEND (λ a → ⟨ a , - a ⟩) $ END
+\end{code}}
+\newcommand\stNegpCommandAlternative{%
+\begin{code}
+negp-command′ : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
+negp-command′ = RECV const $ SEND (λ a → ⟨ a , - a ⟩) $ END
 \end{code}}
 \newcommand\stArithpCommand{%
 \begin{code}
 arithp-command : Cmd ℤ arithp
-arithp-command = CHOICE (const id) λ where
+arithp-command = CHOICE λ where
   zero → addp-command
   (suc zero) → negp-command
 \end{code}}
@@ -171,7 +181,7 @@ postulate
 \end{code}}
 \newcommand\stExecutorSignature{%
 \begin{code}
-exec : {s : Session} → Cmd A s → A → Channel → IO A
+exec : Cmd A S → A → Channel → IO A
 \end{code}}
 \newcommand\stExecutor{%
 \begin{code}
@@ -189,12 +199,12 @@ exec (RECV putx cmd) state ch = do
 \end{code}}
 \newcommand\stBranchingExecutor{%
 \begin{code}
-exec (SELECT{n} i cmd) state ch = do
-  primSend{Fin n} i ch
+exec (SELECT i cmd) state ch = do
+  primSend i ch
   exec cmd state ch
 
-exec (CHOICE{n} putx cont) state ch = do
-  x ← primRecv {Fin n} ch
+exec (CHOICE cont) state ch = do
+  x ← primRecv ch
   exec (cont x) state ch
 \end{code}}
 \begin{code}[hide]
@@ -209,11 +219,11 @@ exec (CHOICE2 putx cmd₁ cmd₂) state ch = do
 \end{code}
 \newcommand\stAcceptor{%
 \begin{code}
-record Accepting A s : Set where
+record Accepting A S : Set where
   constructor ACC
-  field cmd : Cmd A s
+  field cmd : Cmd A S
 
-acceptor : Accepting A s → A → IO A
+acceptor : Accepting A S → A → IO A
 acceptor (ACC cmd) a = primAccept >>= exec cmd a
 \end{code}}
 \begin{code}[hide]
@@ -240,8 +250,8 @@ fffun true = 42
 
 data Cmd′ (A : Set) : Set → Session → Set₁ where
   END    : Cmd′ A A end
-  SEND   : (A → T⟦ t ⟧ × A′) → Cmd′ A′ A″ s → Cmd′ A A″ (send t s)
-  RECV   : (T⟦ t ⟧ → A → A′) → Cmd′ A′ A″ s → Cmd′ A A″ (recv t s)
+  SEND   : (A → T⟦ T ⟧ × A′) → Cmd′ A′ A″ S → Cmd′ A A″ (send T S)
+  RECV   : (T⟦ T ⟧ → A → A′) → Cmd′ A′ A″ S → Cmd′ A A″ (recv T S)
   SELECT21 : (A → A₁ ⊎ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
   CHOICE21 : ((x : Bool) → A → (case x of λ{false → A₁; true → A₂})) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (choice s₁ s₂)
 

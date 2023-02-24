@@ -19,6 +19,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import IO
 
+open import Utils
+
 
 pattern [_] x = x ∷ []
 pattern [_,_] x y = x ∷ y ∷ []
@@ -42,14 +44,17 @@ module formatting1 where
 \newcommand\rstBranchingType{%
 \begin{code}
   data Session (n : ℕ) : Set where
-    ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session n) → Session n
+    ⊕′ : (Si : (i : Fin k) → Session n) → Session n
+    &′ : (Si : (i : Fin k) → Session n) → Session n
 \end{code}}
 \newcommand\rstSession{%
 \begin{code}
 data Session (n : ℕ) : Set where
-  ‼_∙_ ⁇_∙_ : Type → Session n → Session n
+  ‼_∙_ : Type → Session n → Session n
+  ⁇_∙_ : Type → Session n → Session n
   end : Session n
-  ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session n) → Session n
+  ⊕′ : (Si : (i : Fin k) → Session n) → Session n
+  &′ : (Si : (i : Fin k) → Session n) → Session n
   μ_ : Session (suc n) → Session n
   `_ : Fin n → Session n
 \end{code}}
@@ -61,11 +66,6 @@ pattern send t s = ‼ t ∙ s
 infixr 20 ‼_∙_ ⁇_∙_
 infixr 20 μ_ `_
 
-vec→fin : Vec (Session n) k → (Fin k → Session n)
-vec→fin {k = zero} [] = λ()
-vec→fin {k = suc k} (x ∷ v) = λ where
-  zero → x
-  (suc i) → vec→fin v i
 
 ⊕ : Vec (Session n) k → Session n
 ⊕ = ⊕′ ∘ vec→fin
@@ -76,7 +76,7 @@ vec→fin {k = suc k} (x ∷ v) = λ where
 
 -- service protocol for a binary function
 binaryp : Session n → Session n
-binaryp s = ⁇ int ∙ ⁇ int ∙ ‼ int ∙ s
+binaryp S = ⁇ int ∙ ⁇ int ∙ ‼ int ∙ S
 -- service protocol for a unary function
 -- service protocol for choosing between a binary and a unary function
 arithp : Session n → Session n
@@ -85,18 +85,18 @@ arithp : Session n → Session n
 \newcommand\rstExampleManyUnaryp{%
 \begin{code}
 unaryp : Session n → Session n
-unaryp s = ⁇ int ∙ ‼ int ∙ s
+unaryp S = ⁇ int ∙ ‼ int ∙ S
 
 many-unaryp : Session 0
 many-unaryp = μ & [ unaryp (` zero) , end ]
 \end{code}}
 \newcommand\rstExampleArithP{%
 \begin{code}
-arithp s = & [ binaryp s , unaryp s ]
+arithp S = & [ binaryp S , unaryp S ]
 \end{code}}
 \begin{code}[hide]
 arithp-raw : Session n → Session n
-arithp-raw s = &′ {k = 2} (λ{ zero → binaryp s ; (suc zero) → unaryp s})
+arithp-raw S = &′ {k = 2} (λ{ zero → binaryp S ; (suc zero) → unaryp S})
 
 
 variable
@@ -130,29 +130,29 @@ module formatting2 where
 \newcommand\rstCommand{%
 \begin{code}
 data Cmd n (A : Set) : Session n → Set where
-  LOOP     : Cmd (suc n) A s → Cmd n A (μ s)
+  LOOP     : Cmd (suc n) A S → Cmd n A (μ S)
   CONTINUE : (i : Fin n) → Cmd n A (` i)
 \end{code}}
 \begin{code}[hide]
   END    : Cmd n A end
   SEND   : (A → A × T⟦ T ⟧) → Cmd n A S → Cmd n A (‼ T ∙ S)
   RECV   : (T⟦ T ⟧ → A → A) → Cmd n A S → Cmd n A (⁇ T ∙ S)
-  SELECT : ∀ {k si} → (i : Fin k) → Cmd n A (si i) → Cmd n A (⊕′ si)
-  CHOICE : ∀ {k si} → (Fin k → A → A) → ((i : Fin k) → Cmd n A (si i)) → Cmd n A (&′ si)
+  SELECT : ∀ {Si} → (i : Fin k) → Cmd n A (Si i) → Cmd n A (⊕′ Si)
+  CHOICE : ∀ {Si} → ((i : Fin k) → Cmd n A (Si i)) → Cmd n A (&′ Si)
 \end{code}
 \newcommand\rstAddpCommand{%
 \begin{code}
-addp-command : Cmd n ℤ s → Cmd n ℤ (binaryp s)
+addp-command : Cmd n ℤ S → Cmd n ℤ (binaryp S)
 addp-command cmd = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
 
 \end{code}}
 \newcommand\rstSumupCommand{%
 \begin{code}
-addup-command : Cmd n ℤ s → Cmd n ℤ (unaryp s)
+addup-command : Cmd n ℤ S → Cmd n ℤ (unaryp S)
 addup-command cmd = RECV (λ x a → x + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
 
-sumup-command : Cmd 0 ℤ many-unaryp
-sumup-command = LOOP $ CHOICE (λ _ a → a) λ where
+runningsum-command : Cmd 0 ℤ many-unaryp
+runningsum-command = LOOP $ CHOICE λ where
   zero → addup-command (CONTINUE zero)
   (suc zero) → END
 \end{code}}
@@ -167,12 +167,13 @@ postulate
 \end{code}}
 \newcommand\rstCommandStore{%
 \begin{code}
-CmdStore : ∀ n → Set → Set
-CmdStore n A = (i : Fin n) → ∃[ s ] (Cmd (suc (toℕ (opposite i))) A s)
+CmdStore : ℕ → Set → Set
+CmdStore n A = (i : Fin n) → ∃[ S ] (Cmd (suc (toℕ (opposite i))) A S)
 \end{code}}
 \newcommand\rstPops{%
 \begin{code}
-pop1 : ∀{n} → CmdStore (suc n) A → CmdStore n A
+push : CmdStore n A → Cmd (suc n) A S → CmdStore (suc n) A
+pop1 : CmdStore (suc n) A → CmdStore n A
 pop : CmdStore (suc n) A → (i : Fin (suc n)) → CmdStore (suc (toℕ (opposite i))) A
 \end{code}}
 \begin{code}[hide]
@@ -181,15 +182,15 @@ pop1 cms i with cms (suc i)
 
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
 pop {suc n} cms (suc i) = subst (λ H → CmdStore (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
+
+push {n}{S = S} cms cmd zero    rewrite toℕ-fromℕ n = ⟨ S , cmd ⟩
+push cms cmd (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
 \end{code}
 \begin{code}[hide]
 module alternative-executor where
-  exec : Cmd n A s → CmdStore n A → (init : A) → Channel
+  exec : Cmd n A S → CmdStore n A → (init : A) → Channel
     → IO (∃[ n ] (CmdStore (suc n) A × A) ⊎ A)
-  exec {n = n} {A = A} {s = μ s} (LOOP cmd) cms st ch = exec cmd cms′ st ch
-    where cms′ : CmdStore (suc n) A
-          cms′ zero    rewrite toℕ-fromℕ n = ⟨ s , cmd ⟩
-          cms′ (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
+  exec (LOOP cmd) cms st ch = exec cmd (push cms cmd) st ch
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
   exec END cms st ch = do
     primClose ch
@@ -205,10 +206,9 @@ module alternative-executor where
   exec (SELECT i cmd) cms st ch = do
     primSend i ch
     exec cmd cms st ch
-  exec (CHOICE putx f-cmd) cms st ch = do
+  exec (CHOICE f-cmd) cms st ch = do
     x ← primRecv ch
-    let st′ = putx x st
-    exec (f-cmd x) cms st′ ch
+    exec (f-cmd x) cms st ch
 \end{code}
 \newcommand\rstAlternativeExecutorRestart{%
 \begin{code}
@@ -223,7 +223,7 @@ module alternative-executor where
 \newcommand\rstExecutorSignature{%
 \begin{code}
 Gas = ℕ
-exec : Gas → Cmd n A s → CmdStore n A → (init : A) → Channel → IO A
+exec : Gas → Cmd n A S → CmdStore n A → (init : A) → Channel → IO A
 \end{code}}
 \begin{code}[hide]
 exec k END cms state ch = do
@@ -240,29 +240,25 @@ exec k (RECV putx cmd) cms state ch = do
 exec k (SELECT i cmd) cms state ch = do
   primSend i ch
   exec k cmd cms state ch
-exec k (CHOICE putx f-cmd) cms state ch = do
+exec k (CHOICE f-cmd) cms state ch = do
   x ← primRecv ch
-  let state′ = putx x state
-  exec k (f-cmd x) cms state′ ch
+  exec k (f-cmd x) cms state ch
 \end{code}
 \newcommand\rstExecutor{%
 \begin{code}
-exec {n = n} {A = A} {s = μ s} k (LOOP cmd) cms state ch = exec k cmd cms′ state ch
-  where cms′ : CmdStore (suc n) A
-        cms′ zero    rewrite toℕ-fromℕ n = ⟨ s , cmd ⟩
-        cms′ (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
+exec g (LOOP cmd) cms state ch = exec g cmd (push cms cmd) state ch
 exec {suc n} {A} zero (CONTINUE i) cms state ch = pure state -- hack alert!
-exec {suc n} {A} (suc k) (CONTINUE i) cms state ch
+exec {suc n} {A} (suc g) (CONTINUE i) cms state ch
   with cms i
-... | ⟨ s-i , cmd-i ⟩ = exec k cmd-i (pop cms i) state ch
+... | ⟨ _ , cmd-i ⟩ = exec g cmd-i (pop cms i) state ch
 \end{code}}
 \newcommand\rstAcceptor{%
 \begin{code}
-record Accepting {n} A s : Set where
+record Accepting {n} A S : Set where
   constructor ACC
-  field cmd : Cmd n A s
+  field cmd : Cmd n A S
 
-acceptor : {s : Session 0} → Gas → Accepting A s → A → IO A
+acceptor : {S : Session 0} → Gas → Accepting A S → A → IO A
 acceptor k (ACC cmd) a = primAccept >>= exec k cmd (λ()) a
 \end{code}}
 

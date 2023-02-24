@@ -167,7 +167,7 @@
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{session types, domain specific languages, linear types}
+\keywords{session types, domain specific languages, dependent types, Agda}
 
 % \received{20 February 2007}
 % \received[revised]{12 March 2009}
@@ -226,7 +226,7 @@ While these languages and their implementation have fostered research
 and encouraged experimentation, they are not widely used.
 
 To boost the use of session types, 
-a lot of work is dedicated to embedding session types in mainstream
+a lot of work has been dedicated to embedding session types in mainstream
 languages, most of which do not have native support for linearity. 
 There are plenty of examples for such embeddings for functional languages
 like
@@ -239,10 +239,12 @@ Scala \cite{DBLP:conf/ecoop/ScalasY16},
 Java \cite{DBLP:conf/ecoop/HuYH08}. Most of these approaches ignore
 the issue of linearity at compile time; some ignore it entirely. Some (e.g., \cite{DBLP:journals/jfp/Padovani17}) rely
 on run-time checks, others rely on encodings of linearity using lenses
-\cite{DBLP:journals/jip/ImaiG19} or monads \cite{DBLP:conf/haskell/PucellaT08}
+\cite{DBLP:journals/jip/ImaiG19} or monads \cite{DBLP:conf/haskell/PucellaT08}.
 There are also extension languages with a separate checker that add
 sessions \cite{DBLP:conf/coordination/NgYPHK11} or, more generally,
 typestate \cite{DBLP:journals/scp/KouzapasDPG18} to an underlying Java program.
+We comment on some recent implementation that rely on Rust in the
+related work (Section~\ref{sec:related-work}).
 
 Recent work on multi-party session types
 \cite{DBLP:conf/cc/Miu0Y021,DBLP:journals/pacmpl/00020HNY20} suggests
@@ -333,9 +335,14 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
 \begin{itemize}
 \item We show how to deploy the callback approach to binary session
   types in the context of dependently-typed functional
-  programming. Our vehicle is the language Agda, but we expect that our
-  development is transferrable to Haskell, either via compilation or via translation
+  programming. Our vehicle is the language Agda, but we expect our
+  development to be transferrable to Haskell, either via compilation or via translation
   \cite{DBLP:conf/haskell/CockxME0N22}.
+\item Linearity of session handling is ensured by verifying linear
+  handling of command execution in a small interpreter that forms the
+  trusted computing base of our approach. No affine
+  types or linear types are needed in the type system of the host
+  language.
 \item We demonstrate that the approach extends to most familiar
   session type constructions: branching
   (Section~\ref{sec:select-choice}), recursion
@@ -354,13 +361,16 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
 \item For monad lovers we describe version with a monadic encoding of callbacks.
 \end{itemize}
 
-The source of this document refers to a number of literate Agda
+The source of this document includes a number of literate Agda
 scripts which will be submitted as an anonymized supplement (to be
-turned into an artifact).
+turned into an artifact). Every line of code that is typeset in color
+has been checked by Agda.
 
-Working knowledge of Agda would be perfect for understanding the
-paper, but we strive to make the code accessible to readers who are
-knowledgable in Haskell.
+
+Working knowledge of Agda is not a hard requirement for understanding the
+paper. We strive to make the code accessible to readers who are
+knowledgable in Haskell by explaining features specific
+to Agda as they are encountered.
 
 \section{Finite nonbranching session types}
 \label{sec:finite-nonbr-simple}
@@ -373,7 +383,11 @@ usual features of session types.
 
 A binary session type describes a bidirectional communication between two peers,
 let's call them server and client. The session type is attached to the
-type of the communication channel.
+type of the communication channel.\footnote{Agda supports a mixfix
+  syntax where underlines in the identifier indicate the position of
+  the arguments. For example,  $\Atsend{\_}{\_}$ and $\Atrecv{\_}{\_}$ are operators with two
+  arguments. We declare these operators to associate to the right to
+  save parentheses.}
 \stFiniteType
 \stFiniteSession
 These types correspond to the standard grammar of session types, where
@@ -383,17 +397,17 @@ type of sessions.
   T &::= \Aint \mid \Abool  & S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend
 \end{align*}
 The session type $\Atsend{T}{S}$ ($\Atrecv{T}{S}$) describes a channel that is ready to send (receive)
-a value of payload type $T$ and the continue as $S$. The session type
+a value of payload type $T$ and then continue as $S$. The session type
 $\Atend$ describes a channel that can only be closed.
 
 Here are two examples for session types: the types of the server for a
 binary operation and a unary operation, respectively.
 \stExampleBinpUnP
 
-In standard session type theory \cite{???}, there are primitives to
+In a popular functional session type theory \cite{DBLP:journals/jfp/GayV10}, there are primitives to
 send and receive values and to close a channel with types like this:
 \begin{align*}
-  \mathtt{send} & : \Atsend{T}{S} \otimes T \multimap S &
+  \mathtt{send} & : (\Atsend{T}{S} \otimes T) \multimap S &
                                                    \mathtt{recv} &:
                                                                    \Atrecv{T}{S}
                                                                    \multimap
@@ -402,24 +416,24 @@ send and receive values and to close a channel with types like this:
                                                                    S)
   & \mathtt{close} &: \Atend \multimap ()
 \end{align*}
-The types indicate that we must treat channel values of type $S$
+The types indicate that we must treat channel values of session type
 \emph{linearly}: the \texttt{send} operation \emph{consumes} a
-channel, which is ready to send, and returns it in a state described
+channel, which is ready to send, paired with the payload and returns it in a state described
 by $S$; the \texttt{recv} operation \emph{consumes} a channel, which
 is ready to receive, and returns a pair with the received value and
 the updated channel; the \texttt{close} operation \emph{consumes} the
 channel and returns a unit value. Enforcing this linearity is required
 for soundness.
 
-We take a different approach inspired by programming with
+In this work, we take a different approach inspired by programming with
 callbacks. Instead of providing \texttt{send} and \texttt{recv}
 primitives to the programmer, we ask the programmer to define the
-``application logic'' by implementing a value whose type {\ACommand} is indexed by
+``application logic'' by implementing a command value whose type {\ACommand} is indexed by
 a session type. This definition relies on an interpretation of
 types as Agda types.
 \stTypeInterpretation
 \stCommand
-In this definition, the type $A$ embodies the application state. 
+In this definition, the type parameter $A$ embodies the application state. 
 Each $\ACSEND$ command takes a state transformer that extracts the value to
 send from the current application state; each $\ACRECV$ command takes
 a state transformer that is indexed by the received value; the $\ACEND$
@@ -429,13 +443,16 @@ state $A$. We defer the shift to a monadic interface to Section~\ref{sec:going-m
 when we have the full picture.
 
 Continuing our example, we define commands that implement a server
-for the protocols {\Abinaryp} and {\Aunaryp} with the operation instantiated to
-addition and negation, respectively.
-\stAddpCommand
+for the protocols {\Aunaryp} and {\Abinaryp} with the operation instantiated to
+negation and addition, respectively.
 \stNegpCommand
-We use explicit lambda abstraction instead of (more fancy) combinators
+\stAddpCommand  
+ We use explicit lambda abstraction instead of fancy abbreviations and library combinators
 for clarity; the variable $a$ stands for the application state and $x$ and $y$ for
-the respective values received from the channel. 
+the respective values received from the channel. For connoisseurs of pointfree definitions, we give a
+more concise version of the addition command using functions from the
+standard library:
+\stAddpCommandAlternative
 
 To execute commands, we write an
 interpreter that relies on primitive operations provided
@@ -443,7 +460,8 @@ in the $\AIO$ monad. The point of our approach is that this
 interpreter is the single definition where we are obliged to prove
 that it handles channels in a linear fashion. 
 \stPostulates
-This API should be self-explanatory. It declares an abstract type of
+This API should be self-explanatory.\footnote{The type $\top$ is like
+  Haskell's unit type with single element {\Att}.} It declares an abstract type of
 untyped, raw channels with operations to accept a connection, close a channel, as
 well as send and receive a value over the channel. It glosses over issues like
 serialization, which can be addressed using type class constraints like
@@ -451,7 +469,8 @@ serialization, which can be addressed using type class constraints like
 % Our shared memory implementation relies on unsafe casts.
 
 The interpreter itself is defined by induction on the type
-{\ACommand}.
+{\ACommand}. The actual computation takes place in the {\AIO} monad and is expressed using the {\Ado} notation, both
+familiar from Haskell. 
 \stExecutorSignature\vspace{-1.5\baselineskip}
 \stExecutor
 To actually run a server, it remains to provide a wrapper that accepts
@@ -460,19 +479,27 @@ a connection and invokes the interpreter.
 Examining the interpreter, we finally see the full monadic
 structure. We need a stack of monad transformers starting with a state
 monad for the application state on top of a reader monad providing the
-channel on top of the IO monad. 
+channel on top of the IO monad.
+
+Our proof obligation for the interpreter boils down to verifying that
+the interpretation of each command executes the single communication
+action designated by the corresponding session type operator. The
+correct sequencing according to the session type is imposed by the
+sequencing constraint underlying the {\AIO} monad. Indeed, this
+observation was the key to employ monads for APIs to state-based
+operations in pure functional languages \cite{DBLP:conf/popl/JonesW93}.
 
 \section{Selection and choice}
 \label{sec:select-choice}
 
-Adding branching to our development is straightforward. The standard
-theory allows branching on a finite set of labels using this syntax:
+Adding branching to our development is straightforward. The standard 
+theory of session types allows branching on a finite set of labels using this syntax:
 \begin{align*}
   S & ::= \dots \mid \oplus\{ \ell : S_\ell \mid \ell \in L \} \mid
       \&\{\ell: S_\ell \mid \ell \in L\}
 \end{align*}
-Here $L$ is a finite set of labels, which can be chosen differently at
-every instance. 
+Here $L$ is a finite, non-empty set of labels, which can be chosen differently at
+every use of the type operator. 
 The type constructor $\oplus$ corresponds to an \emph{internal choice} of the
 program.  The \texttt{select} primitive sends one of the labels, say $\ell \in L$, available in the
 type and continues according to $S_\ell$:
@@ -483,25 +510,34 @@ type and continues according to $S_\ell$:
 The type constructor $\&$ corresponds to an \emph{external choice}. The
 primitive \texttt{branch} receives one of the labels 
 mentioned in the type and chooses a continuation according to the
-label. In the presence of sum types, the primitive can be typed as
+label. In the presence of sum types and linearity, the primitive can be typed as
 follows \cite{DBLP:journals/toplas/Padovani19}.
 \begin{align*}
   \mathtt{branch} &: \&\{\ell: S_\ell \mid \ell \in L\} \multimap +\{\ell: S_\ell \mid \ell \in L\}
 \end{align*}
-The modeling in Agda extends the definitions of
+Our modeling in Agda extends the definitions of
 {\ASession}, {\ACommand}, and {\Aexecutor} from
-Section~\ref{sec:finite-nonbr-simple}. A label set of size $n$ is
-modeled by the type $\AFin~n$ and the alternative continuation sessions by
+Section~\ref{sec:finite-nonbr-simple}. A label set of size $k$ is
+modeled by the type $\AFin~k = \{ 0, \dots, k-1\}$ and the alternative continuation sessions by
 functions from labels to {\ASession} (isomorphic to vectors of sessions, cf.\  Section~\ref{sec:select-choice-with}).
 \stBranchingType
 \stBranchingCommand
+The commands for {\ACSELECT} and {\ACCHOICE} only differ in the
+placement of the parentheses: {\ACSELECT} takes a label and a command
+corresponding to this label, whereas {\ACCHOICE} takes a function that
+maps a label to its command. Neither command requires the application
+state: the selection is static and does not depend on the current
+state; once the external choice has been taken, the chosen command can
+reflect that choice in the application state.
 \stExecutorSignature\vspace{-1.5\baselineskip}
 \stBranchingExecutor
 
-Continuing our example, we define the type of an arithmetic server,
+Extending our running example, we define the type of an arithmetic server,
 which gives a choice between a binary operation and a unary one. 
-This definition uses a smart constructor for the external choice that
-takes a vector and transforms it into the corresponding function.
+This definition uses a smart constructor {\Aamp} for the external choice that
+takes a vector of session types and transforms it into the
+corresponding function.\footnote{This transformation relies on the
+  isomorphism between vectors of size $k$ and non-dependent functions with domain {\AFin~$k$}.}
 \stExampleArithP
 The command for the server extends in the obvious way. The vector
 trick does not work for the {\ACommand} constructors {\ACSELECT} and
@@ -513,9 +549,11 @@ Finally, we observe that the proposed interface enables a more dynamic
 selection operator than in standard session types. While the standard
 select operator is indexed by a label that is fixed at compile time,
 we can supply a dynamic selector command where the label is computed
-by a callback \AgdaFunction{setl} run time:
+by a callback \AgdaFunction{getl} at run time:
 \stDynamicBranchingCommand
 Extending {\Aexecutor} to this command is straightforward.
+There is still room for improvement in the type of this command. We
+come back to this issue in Section~\ref{sec:context-free-session}.
 
 \section{Going in circles}
 \label{sec:going-circles}
@@ -538,7 +576,7 @@ and a $\mu$ operator like so:\footnote{We gloss over the issue of
       \mid \dots
 \end{align*}
 The intended semantics of the $\Amu$ operator is that $\Amu~X.S$ is
-isomorphic to $S[X \mapsto \Amu~X.S]$, the unfolding, where we
+equivalent to $S[X \mapsto \Amu~X.S]$, the unfolding, where we
 substitute the recursive type itself for the variable $X$ in its body.
 
 For the Agda formalization we choose the standard de Bruijn encoding
@@ -548,11 +586,11 @@ scope. The {\Amu} operator opens a new scope and {\Aback~$i$}
 references the $i$th variable, the innermost binding being $0$.
 \rstSession
 
-Extending our running example, we redefine the protocol {\Aunaryp} as a function
+Further extending our running example, we redefine the protocol {\Aunaryp} as a function
 that takes the rest of the protocol and wrap it into a recursive
 type. The session type {\Amanyunaryp} is a recursive type that either
 runs a unary function and recurses or just ends the protocol. We
-define $\&$ as a smart constructor as in Section~\ref{sec:select-choice}.
+define {\Aamp} as a smart constructor as in Section~\ref{sec:select-choice}.
 \rstExampleManyUnaryp
 
 The {\ACommand} type is straightforward to extend. It obtains a new
@@ -596,39 +634,41 @@ component that we call {\ACommandStore}.
   \caption{The session type indices in {\ACommandStore} after 1, 2, and $n$ loop entries}
   \label{fig:commandstore}
 \end{figure}
-First, its type is non-obvious.  The top-level type is a
+Its type requires some thought.  The top-level type is a
 {\ASession~0}. When we enter the first loop, its body refers to a
 session of type {\ASession~1}. Hence, the {\ACommandStore} contains
-one entry (first table in Figure~\ref{fig:commandstore}).
+one entry (left column in Figure~\ref{fig:commandstore}).
 Entering the next loop pushes a body for the type {\ASession~2}
-(middle of figure). After entering the $n$-th loop, we obtain the
+(middle column). After entering the $n$-th loop, we obtain the
 picture on the right of Figure~\ref{fig:commandstore}. Here is a
 suitable type definition.
 \rstCommandStore
 
 For some $(i : \AFin~(\Asuc~ n))$, the function
 $\AgdaFunction{opposite}~i$ returns $n-i$ (as an element of the same
-type). The tricky part is implemented the typed push and pop operations on
-that structure.
+type) and the function {\AtoN} injects an element of the finite number
+type into the natural numbers (it is an identity function up to the type). The tricky part is implemented in the
+typed push and pop operations on that structure.
 \rstPops
 
+The \AgdaFunction{push} function takes a {\ACommandStore} and a
+suitable {\ACommand} and returns the store extended by this command
+(at position {\Azero}). 
 The \AgdaFunction{pop1} function pops the first entry off the
 {\ACommandStore}. It gets used in defining the inductive step of the
-function tele
-\AgdaFunction{pop}, which pops any (legal) number of entries
-from the stack. The proofs are short but technical. They involve
-injections from $\AFin~n$ to $\AFin~(\Asuc~n)$.
+function \AgdaFunction{pop}, which pops any (legal) number $i$ of entries
+from the stack. The definitions are simple but omitted from the text
+as they require invoking some technical lemmas about injections (i.e.,
+identity functions) from $\AFin~n$ to $\AFin~(\Asuc~n)$.
 
 \rstExecutorSignature\vspace{-1.5\baselineskip}
 \rstExecutor
 
 The execution of {\AMU} just pushes the loop body onto the
-{\ACommandStore}, again with minor technical complications due to the
-{\AFin} type --- just ignore the \AgdaKeyword{rewrite} to see what is
-happening.
-
-The case for {\ACONTINUE~$i$} reveals another complication. The recursive
-call happens on a command drawn from the {\ACommandStore}. This
+{\ACommandStore}.
+The case for {\ACONTINUE~$i$} jumps to the selected command and pops
+all intervening continuations from the store. It also reveals another complication. The recursive
+call to {\Aexecutor} happens on a command drawn from the {\ACommandStore}. This
 command is unrelated to the current command, which upsets Agda's
 termination checker. To console it we introduce a \AgdaFunction{Gas}
 argument, which we decrement at each {\ACONTINUE}.
@@ -657,7 +697,7 @@ There are at least three possibilities.
   the continuation type and an implementation of the restart function.
   \rstAlternativeExecutorRestart
   With this approach, the management of {\Arestart}  has to be
-  included in the TCB as it also has to guarantee linear treatment of
+  included in the trusted computing base as it also has to guarantee linear treatment of
   the channel.
 \end{enumerate}
 The current formalization leaves that question open and just breaks
@@ -673,29 +713,35 @@ callbacks and in the implementation of the {\Aexecutor}
 function. Indeed, moving on to a monadic interface makes our session
 programs more concise.
 
-We start with a slightly refactored type {\ACommand}.
+We start with a slightly refactored type of commands. More precisely,
+we introduce a new {\ACSKIP} command that only performs a state 
+transformation via its single callback.
+Second, we restate the types of the callbacks for {\ACSEND} and
+{\ACRECV} in terms of the state monad.
+
 \mstCommand
 
-First, we remove handling of the application state from the
-{\ACCHOICE} command so that both, {\ACSELECT} and {\ACCHOICE}, are solely
-dealing with communication.
-
-Second, we introduce a new {\ACSKIP} command that only performs a state
-transformation via its single callback.
-
-Third, we restate the types of the callbacks for {\ACSEND} and {\ACRECV} in terms of state transformers.
-
 Here are the specifics of the types of the callbacks. Each callback
-runs in a state monad that handles the application state on top of
+runs in a state monad that handles the application state $A$ on top of
 another monad $M$. This construction is expressed in terms of the
 monad transformer {\AStateT} applied to the application state
 $A$ and the underlying monad $M$. The type of the callback does not give away more
-than that: $M$ has a type that fits a monad and it implements the
-interface {\ARawMonad} (a record that contains the basic monadic
-operations; using the record in this way enables overloading of the
-monadic operators in Agda \cite{DBLP:conf/icfp/DevrieseP11}). 
+than that.
 
-Our examples become really concise:
+But wait, using the Agda standard library, we have to state that $M$
+has a type that fits a monad and that it implements the
+interface {\ARawMonad} (a record that contains the basic monadic
+operations).
+Fortunately, we can abstract from these issues and adopt a
+Haskell-inspired syntax with a straightforward
+Agda definition.\footnote{Agda's \AgdaKeyword{syntax} command defines
+  a macro that enables abstraction over binders. The newly introduced
+  syntax, the definiendum, is \emph{on the right} of the equals
+  sign. Putting the record {\ARawMonad~$M$} in double braces enables overloading of the
+  monadic operators \cite{DBLP:conf/icfp/DevrieseP11}.}
+\mstMonadic
+
+Our running examples become (even more?) concise:
 \mstExampleServers
 Here, {\Aput}, {\Amodify}, and {\Aget} are monadic functions defined
 in the state monad transformer. Their full types are fairly
@@ -706,7 +752,7 @@ unreadable, but intuitively we can treat them like this:
   & \Aget &: ST~A~A
 \end{align*}
 {\Aput} overwrites the state with its argument; {\Amodify~$h$} applies 
-function $h$ to the state and returns the new state; and {\Aget $=$ \Amodify~\Aid} returns the current state.
+function $h$ to the state and returns the new state; and {$\Aget = \Amodify~\Aid$} returns the current state.
 
 While we are at it, we also define the {\Aexecutor} function in
 monadic style. At this point, the full type of the execution monad
@@ -851,6 +897,30 @@ protocols with more than two participants. We refrained from doing so
 in this work to avoid the extra
 complication. Section~\ref{sec:handl-mult-chann} already gives some
 insight into the requirements for a multiparty version.
+
+\section{Related work}
+\label{sec:related-work}
+
+
+
+Several recent implementations of session types rely on Rust, a
+language with uniqueness types and ownership, all checked at compile
+time. While uniqueness types are quite similar to affine types
+(describing values that can be used at most once), they do not quite
+get to the level needed for sessions: having an affine session type
+for a channel means that an agent can drop the connection anytime
+without finishing the protocol, which leads to deadlock at the other
+end of the connection. With a proper linear session type, every agent has to
+fulfill the protocol up to the closing of the connection.
+
+\cite{DBLP:conf/ecoop/ChenBT22}
+\cite{DBLP:conf/ecoop/LagaillardieNY22}
+\cite{DBLP:conf/ppopp/CutnerYV22}
+\cite{DBLP:conf/coordination/CutnerY21}
+\cite{DBLP:conf/coordination/LagaillardieNY20}
+\cite{DBLP:journals/corr/abs-1909-05970}
+\cite{DBLP:conf/icfp/JespersenML15}
+
 
 %%
 %% The acknowledgments section is defined using the "acks" environment

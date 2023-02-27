@@ -776,7 +776,7 @@ monads and executes the underlying IO action.
 
 \section{Context-free session types}
 \label{sec:context-free-session}
-\input{latex/ST-contextfree.tex}
+\input{latex/ST-indexed-contextfree.tex}
 
 Context-free session types
 \cite{DBLP:journals/iandc/AlmeidaMTV22,DBLP:journals/toplas/Padovani19,DBLP:conf/icfp/ThiemannV16}
@@ -804,31 +804,147 @@ The revised command structure has a few catches that require
 explanation.
 \cstCmd
 
+The {\ACommand} datatype now carries four type-related parameters on
+top of the session type. A command of type {$\ACommand~A~B~V~W~S$} is
+firstly an action that takes an input of type $A$, yields an output of
+type $B$, and executes a session according to $S$. The additional
+parameters, $V$ and $W$, are vectors of types that control the typing
+of the currently pending loops, which are explained with the commands
+{\AMU} and {\ACONTINUE}. For know, we can think of them as stack of
+the input and output types of those pending loops.
+
 The {\ACSKIP} command is associated with a {\Atcfskip} in the session
-type. This connection is sometimes needed, but most often it is
-undesired. To eliminate superfluous {\Atcfskip}s in the type, we
-provide a smart composition constructor that simplifies compositions
-with {\Atcfskip}.
+type. It comes with a function that transforms $A$s into $B$s.
+% This connection is sometimes needed, but most often it is
+% undesired. To eliminate superfluous {\Atcfskip}s in the type, we
+% provide a smart composition constructor that simplifies compositions
+% with {\Atcfskip}.
 
 The {\ACSEND} and {\ACRECV} commands no longer take a command parameter
 to process the continuation session. This functionality is now
 provided once and for all by the composition operator.
 
-The composition operator for two commands has an additional argument
-to combine the resulting states of the first and second command. Quite
-often, with tail-recursive session types, we simply ignore the outcome
-of the first command and pass on the second.
+The command {\ACSELECT} prescribes dynamic selection. It takes a
+callback that maps a value of input type $A$ to a dependent pair of a
+label $i$ and a value of type $F~i$.\footnote{The negative occurrence
+  of the $F$ parameter is not permitted in the constructor of a
+  {\ASet} datatype. Its presence forces the command type one level up
+  into {\ASetOne}.} The continuation takes advantage of this
+fine-grained type information by associating the label $i$ with the
+input type $F~i$ as produced by the callback.
 
-The remaining commands, {\ACSELECT} and {\ACCHOICE}, are as before using
-the dynamic selection operator for maximum flexibility.
+The {\ACCHOICE} command is as before up to the additional type parameters.
 
-We only show an excerpt of the {\Aexecutor} function.
+The composition operator for two commands has three additional
+callback arguments, which we call {\Asplit}, {\Across}, and
+{\Ajoin}. The first callback {\Asplit} splits the input type into one part that gets
+consumed by the first command and another that bypasses it.
+The second callback {\Across} joins the output type and the bypass into the
+input type for the second command.
+The third callback {\Ajoin} combines the outputs of the two commands.
+% Quite
+% often, with tail-recursive session types, we simply ignore the outcome
+% of the first command and pass on the second.
+
+In the context-free case, the behavior of the {\AMU} command is more
+general than the simple tail-recursive iteration in
+Section~\ref{sec:going-circles}. It takes a loop body that transforms
+$A$s into $B$s with these same types pushed on the stacks.
+
+The {$\ACONTINUE~i$} command invokes the $i$th pending loop. To do so,
+the current type must match the typing of the loop, which we find by
+lookup up the input and output type on the stacks at position $i$.
+
+\subsection{Examples}
+\label{sec:examples}
+
+
+
+Before we delve into the interpreter, let's take stock what we
+achieved by looking at our old examples as well as a new one that
+shows of the additional power of context-free sessions.
+\cstBinaryp
+
+The additional modularity of context-free session types shows by
+comparing these types with the ones from
+Section~\ref{sec:going-circles}, where the protocol fragments are
+metafunctions that take a continuation session as a parameter. No such
+parameterization is needed here.
+
+The final example {\Amanyunaryp} contains a tail recursive part. The
+second component of the choice must make use of the {\Atcfskip} type,
+because the arm of a choice cannot be empty.
+
+Let's consider servers that implement those protocols.
+\cstCmdExamples
+
+The code of the servers does not look that different from
+before. However, unlike before, each server is now reusable as part of
+the implementation of a larger protocol. One indication is the use of
+the parameters $V$ and $W$ in the types, another is the lack of the
+{\ACEND} constructor which prescribes closing the connection.
+
+As these protocols are still tail-recursive, their implementation uses
+a binary composition operator for commands that is tailored for this
+use case. The fan out feeds everything to the first command; the
+cross operation ignores the bypassed value, passing only the output of
+the first command to the second; and the join operation passes only
+the output of the second command.
+\cstTailComposition
+
+
+To further pinpoint the difference we finally present a protocol that
+exploits the power of context-free session types beyond tail recursive
+protocol: a server that receives a binary tree.
+\cstTreep
+
+The session types {\Aleafp} and {\Abranchp} encode receiving a leaf and
+a branch of the binary tree type {\AIntTree}. The session type
+{\Atreep} provides the enclosing recursion and choice between the leaf
+and branch protocols. As {\Abranchp} contains two recursive calls,
+the protocol {\Atreep} is no longer tail recursive.
+\cstRecvTree
+The receiver for the leaf wraps the received value in the {\ACLeaf}
+constructor and returns it.
+The receiver for the branch obtains the left and right subtrees by
+recursive calls {\ACONTINUE~\Azero} and combines the outcomes using
+the {\ACBranch} constructor. The {\Asplit} and {\Across} callbacks
+just manipulate values of unit type.
+
+The sender of a tree makes full use of the callbacks for command
+composition. 
+\cstSendTree
+The function {\AsplitTree} is essentially (one half of) the
+isomorphism that unfolds the recursion in type {\AIntTree} and
+function {\AIntTreeF} helps construct its type. It is straightforward
+to construct the sender of a tree using these helpers. Using
+{\AsplitTree} as the callback for {\ACSELECT}, we find that the
+{\Azero} branch is invoked with an integer and the {\Asuc~\Azero}
+branch is invoked with a pair of the two subtrees. The {\Asplit}
+callback is just the identity, so that the left subtree is passed to
+the first recursive call and the right one to the second.
+
+\subsection{Interpretation}
+\label{sec:interpretation}
+
+
+We show the full {\Aexecutor} function to explain why the code in
+this section is not fully monadic.
 \cstExec
 
 The implementation of {\ACSKIP} just executes the action.
-Composition performs the left command, obtains its final state in
-$x_1$, then it performs the right command, obtains its final state in
-$x_2$, and updates the returned state to $h~x_1~x_2$.
+Sending  {\ACSEND}, receiving  {\ACRECV}, and choice {\ACCHOICE} are as usual.
+The dynamic selection is improved with respect to
+Section~\ref{sec:select-choice}. Previously, there was no connection
+between the selected label and the executed continuation, so that a
+bug in the interpreter might introduce a mismatch. In the present
+interpreter, no such mismatch is possible because it would be a type
+error to invoke any other continuation than $\Acont~i$ with $ai$.
+
+Composition first splits the input using the {\Asplit} callback. It performs the left command, obtains its final state in
+$b_1$, combines it with the bypass value $a'$ using {\Across}, and
+then performs the right command. It obtains its final state in
+$b_2$ and returns $\Ajoin~a_1~a_2$.
 The implementations for {\AMU} and {\ACONTINUE} are as before in
 Section~\ref{sec:going-circles}. The difference is that the
 {\ACONTINUE} operation may now appear in the context of a composition
@@ -836,21 +952,6 @@ which provides a nontrivial continuation. In
 Section~\ref{sec:going-circles}, the function {\Aexecutor} is tail
 recursive, but here it is not!
 
-
-The previously discussed examples can be made to work without much
-effort. To expose the difference we concentrate on a protocol that exploits the power of
-context-free session types, a server that receives a binary tree.
-\cstTreep
-
-The session types {\Aleafp} and {\Abranchp} encode receiving leaf and
-a branch of the binary tree type {\AIntTree}. The session type
-{\Atreep} provides the enclosing recursion and choice between the leaf
-and branch protocols.
-The receiver for the leaf wraps the received value in the {\ACLeaf}
-constructor and stores it in the application state.
-The receiver for the branch obtains the left and right subtrees by
-recursive calls {\ACONTINUE~\Azero} and combines the outcomes using
-the {\ACBranch} constructor.
 
 
 

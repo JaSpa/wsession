@@ -7,13 +7,17 @@ module Channels where
 open import Data.Unit.Polymorphic.Base using (⊤; tt) public
 
 open import IO
-
-variable A : Set
-
+\end{code}
+\newcommand\variableAB{%
+\begin{code}
+variable A B : Set
+\end{code}}
+\newcommand\postulateChannel{%
+\begin{code}
 postulate
   Channel : Set
   primAccept : IO Channel
   primClose : Channel → IO {lzero} ⊤
   primSend : A → Channel → IO {lzero} ⊤
   primRecv : Channel → IO A
-\end{code}
+\end{code}}

@@ -10,7 +10,7 @@ open import IO
 \end{code}
 \newcommand\variableAB{%
 \begin{code}
-variable A B : Set
+variable A B C : Set
 \end{code}}
 \newcommand\postulateChannel{%
 \begin{code}

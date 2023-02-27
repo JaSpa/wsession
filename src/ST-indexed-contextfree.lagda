@@ -113,7 +113,7 @@ data Cmd    : Set → Set → Vec Set n → Vec Set n → Session n → Set₁ w
 \end{code}}
 \newcommand\cstTailComposition{%
 \begin{code}
-_⨟′_ : ∀{C} → Cmd A B V W S₁ → Cmd B C V W S₂ → Cmd A C V W (S₁ ⨟ S₂)
+_⨟′_ : Cmd A B V W S₁ → Cmd B C V W S₂ → Cmd A C V W (S₁ ⨟ S₂)
 cmd₁ ⨟′ cmd₂ = [ (λ x → ⟨ x , tt ⟩) ] cmd₁ ⨟[ constᵣ ] cmd₂ [ constᵣ ]
 \end{code}}
 \begin{code}[hide]
@@ -140,7 +140,7 @@ pop {suc n} {A ∷ V} {B ∷ W} cms (suc i) rewrite toℕ-inject₁ (opposite i)
 \end{code}
 \newcommand\cstExec{%
 \begin{code}
-exec : ∀{n}{A}{B}{V}{W}{S} → Cmd A B V W S → CmdStore n V W → A → (ReaderT Channel IO) B
+exec : Cmd{n} A B V W S → CmdStore n V W → A → (ReaderT Channel IO) B
 exec (SKIP act) cms a = pure (act a)
 exec (SEND getx) cms a = do
   let ⟨ b , x ⟩ = getx a

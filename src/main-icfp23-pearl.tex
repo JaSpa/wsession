@@ -810,7 +810,7 @@ firstly an action that takes an input of type $A$, yields an output of
 type $B$, and executes a session according to $S$. The additional
 parameters, $V$ and $W$, are vectors of types that control the typing
 of the currently pending loops, which are explained with the commands
-{\AMU} and {\ACONTINUE}. For know, we can think of them as stack of
+{\AMU} and {\ACONTINUE}. For now, we can think of them as stack of
 the input and output types of those pending loops.
 
 The {\ACSKIP} command is associated with a {\Atcfskip} in the session
@@ -861,15 +861,15 @@ lookup up the input and output type on the stacks at position $i$.
 
 
 Before we delve into the interpreter, let's take stock what we
-achieved by looking at our old examples as well as a new one that
-shows of the additional power of context-free sessions.
+achieved by reviewing our old examples as well as a new one that
+demonstrates the additional expressivity of context-free sessions.
 \cstBinaryp
 
-The additional modularity of context-free session types shows by
-comparing these types with the ones from
+Compare these types with the corresponding ones from
 Section~\ref{sec:going-circles}, where the protocol fragments are
 metafunctions that take a continuation session as a parameter. No such
-parameterization is needed here.
+parameterization is needed with context-free session types. They are
+intrinsically compositional and modular.
 
 The final example {\Amanyunaryp} contains a tail recursive part. The
 second component of the choice must make use of the {\Atcfskip} type,
@@ -886,16 +886,17 @@ the parameters $V$ and $W$ in the types, another is the lack of the
 
 As these protocols are still tail-recursive, their implementation uses
 a binary composition operator for commands that is tailored for this
-use case. The fan out feeds everything to the first command; the
+use case. The split function feeds everything to the first command; the
 cross operation ignores the bypassed value, passing only the output of
 the first command to the second; and the join operation passes only
 the output of the second command.
 \cstTailComposition
 
 
-To further pinpoint the difference we finally present a protocol that
-exploits the power of context-free session types beyond tail recursive
-protocol: a server that receives a binary tree.
+To further pinpoint the difference between context-free sessions and
+regular session we finally present a protocol that
+exploits the power of context-free session types by going beyond tail
+recursion: servers that receive and send binary trees. 
 \cstTreep
 
 The session types {\Aleafp} and {\Abranchp} encode receiving a leaf and
@@ -904,9 +905,9 @@ a branch of the binary tree type {\AIntTree}. The session type
 and branch protocols. As {\Abranchp} contains two recursive calls,
 the protocol {\Atreep} is no longer tail recursive.
 \cstRecvTree
-The receiver for the leaf wraps the received value in the {\ACLeaf}
+The receiver for the leaf (choice {\Azero}) wraps the received value in the {\ACLeaf}
 constructor and returns it.
-The receiver for the branch obtains the left and right subtrees by
+The receiver for the branch (choice {\Asuc~\Azero}) obtains the left and right subtrees by
 recursive calls {\ACONTINUE~\Azero} and combines the outcomes using
 the {\ACBranch} constructor. The {\Asplit} and {\Across} callbacks
 just manipulate values of unit type.
@@ -914,8 +915,8 @@ just manipulate values of unit type.
 The sender of a tree makes full use of the callbacks for command
 composition. 
 \cstSendTree
-The function {\AsplitTree} is essentially (one half of) the
-isomorphism that unfolds the recursion in type {\AIntTree} and
+The function {\AsplitTree} implements essentially (one half of) the
+isomorphism that unfolds the recursion in type {\AIntTree};
 function {\AIntTreeF} helps construct its type. It is straightforward
 to construct the sender of a tree using these helpers. Using
 {\AsplitTree} as the callback for {\ACSELECT}, we find that the

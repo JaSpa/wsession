@@ -991,6 +991,12 @@ custom library, following the lead of the related work
 \cite{DBLP:journals/pacmpl/00020HNY20,DBLP:conf/cc/Miu0Y021}.
 We leave such a compiler to future work.
 
+Alternatively, one might create a library implementation that exposes
+the commands, which are reified in a datatype in our approach, as
+functions. This approach has been pioneered by Reynolds and
+subsequently applied, e.g., in the context of partial evaluation and
+program analysis \cite{Thiemann-jfp, Carette-et-al}.
+
 \subsection{Multiparty session types}
 \label{sec:mult-sess-types}
 
@@ -1002,6 +1008,67 @@ insight into the requirements for a multiparty version.
 
 \section{Related work}
 \label{sec:related-work}
+
+In this section, we review how different library implementations of
+session types deal with linearity. Several implementations perform
+linearity checks at run time. While a check for at most one (affine)
+use of a resource can be performed with a single bit \cite{Tov}, we
+are not aware of a reliable check for linearity.
+
+%% dynamic selection -> label-dependent session types
+
+%% unclassified
+
+\cite{DBLP:conf/fase/HuY16} (socaml: dynamic check)
+
+\cite{DBLP:conf/fase/HuY17} (socaml: dynamic check)
+
+\subsection{Haskell}
+\label{sec:hask-impl}
+
+The earliest Haskell implementation by Neubauer \cite{DBLP:conf/padl/NeubauerT04}
+emphasizes the modeling of the type of a single session using phantom
+types. Duality is implemented using type classes with functional
+dependencies. Linearity is not considered.
+
+Sackman \cite{SackmanE08} and Tov \cite{DBLP:conf/popl/TovP11} model
+multiple channels using a monad that is indexed by a mapping
+from channel ids to their current session types. The mapping changes
+with each operation to keep track of the current state of all
+channels. The monadic interface guarantees linearity.
+
+This approach leaves more freedom to the programmer than our proposal
+in Section~\ref{sec:handl-mult-chann}. While individual channel types
+are independent in their approach, our multi-channel session types
+impose a choreography on all connections, which is closer in spirit to
+multiparty session types. 
+
+\cite{DBLP:conf/haskell/LindleyM16}
+
+\cite{DBLP:conf/popl/OrchardY16} % does it come with a Haskell implementation?
+
+\subsection{OCaml}
+\label{sec:ocaml}
+
+\cite{DBLP:journals/jfp/Padovani17} (checks linearity at run time)
+
+Session OCaml \cite{DBLP:journals/scp/ImaiYY19}
+
+
+\subsection{Java}
+\label{sec:java}
+
+Session-based distributed programming in Java
+\cite{DBLP:conf/ecoop/HuYH08} (special syntax for session
+communication)
+
+\subsection{Scala}
+\label{sec:scala}
+
+\cite{DBLP:conf/ecoop/ScalasY16} (socaml: checks linearity at run time)
+
+\subsection{Rust}
+\label{sec:rust}
 
 
 

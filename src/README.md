@@ -7,16 +7,20 @@ The material for sections 2-4 can be made to work with the current release (1.7.
 
 ### Channels.lagda
 
-Postulates for the channel API
+Postulates for the channel API.
+
+### Utils.lagda
+
+Implementation of the isomorphism between `Vec A n` and `Fin n -> A`.
 
 ### ST-finite-nonbranching.lagda
 
-Contains the material presented in Section 2 and (counter the name) the material from Section 3 on branching session types. Imports Channels.
+Contains the material presented in Section 2 and (counter the name) the material from Section 3 on branching session types. Imports Channels, Utils.
 
 ### ST-recursive.lagda
 
 The material presentation in Section 4 on session types with recursion.
-Imports Channels.
+Imports Channels, Utils.
 
 ### ST-monadic.lagda
 
@@ -26,6 +30,6 @@ Imports Channels.
 ### ST-indexed-contextfree.lagda
 
 Context-free sesssion types as presented in Section 6. 
-Imports Channels.
+Imports Channels, Utils.
 
 ### ST-

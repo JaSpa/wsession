@@ -66,6 +66,16 @@ pattern send t s = ‼ t ∙ s
 infixr 20 ‼_∙_ ⁇_∙_
 infixr 20 μ_ `_
 
+-- duality
+dual : Session n → Session n
+dual (send T S) = recv T (dual S)
+dual (recv T S) = send T (dual S)
+dual end = end
+dual (⊕′ Si) = &′ (dual ∘ Si)
+dual (&′ Si) = ⊕′ (dual ∘ Si)
+dual (μ S) = μ (dual S)
+dual (` x) = ` x
+
 
 ⊕ : Vec (Session n) k → Session n
 ⊕ = ⊕′ ∘ vec→fin

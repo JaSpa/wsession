@@ -340,9 +340,9 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
   \cite{DBLP:conf/haskell/CockxME0N22}.
 \item Linearity of session handling is ensured by verifying linear
   handling of command execution in a small interpreter that forms the
-  trusted computing base of our approach. No affine
-  types or linear types are needed in the type system of the host
-  language.
+  trusted computing base of our approach. There is no need for linear
+  types in the type system of the host language, nor is there a need
+  for simulating linearity.
 \item We demonstrate that the approach extends to most familiar
   session type constructions: branching
   (Section~\ref{sec:select-choice}), recursion
@@ -358,7 +358,7 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
   session types.
 \item All our session type systems inherit the polymorphism from their
   host language, Agda.
-\item For monad lovers we describe version with a monadic encoding of callbacks.
+\item For monad lovers we describe a version with a monadic encoding of callbacks.
 \end{itemize}
 
 The source of this document includes a number of literate Agda
@@ -995,7 +995,7 @@ Alternatively, one might create a library implementation that exposes
 the commands, which are reified in a datatype in our approach, as
 functions. This approach has been pioneered by Reynolds and
 subsequently applied, e.g., in the context of partial evaluation and
-program analysis \cite{Thiemann-jfp, Carette-et-al}.
+program analysis \cite{DBLP:journals/jfp/Thiemann99,DBLP:journals/jfp/CaretteKS09}.
 
 \subsection{Multiparty session types}
 \label{sec:mult-sess-types}
@@ -1012,16 +1012,26 @@ insight into the requirements for a multiparty version.
 In this section, we review how different library implementations of
 session types deal with linearity. Several implementations perform
 linearity checks at run time. While a check for at most one (affine)
-use of a resource can be performed with a single bit \cite{Tov}, we
+use of a resource can be performed with a single bit \cite{DBLP:conf/esop/TovP10}, we
 are not aware of a reliable check for linearity.
+
+Several implementations statically enforce linearity by encoding it
+using polymorphism \cite{DBLP:journals/scp/ImaiYY19} or higher-order
+abstract syntax \cite{DBLP:conf/haskell/LindleyM16}. While these
+encodings cleverly exploit the facilities of the host language and
+support type inference, they
+are nontrivial to explain and yield types that are not easy on the
+programmer. No such cleverness is needed in our approach; types are
+human-readable and the interactive Agda system helps with constructing
+types and programs, but session types are not inferred.
 
 %% dynamic selection -> label-dependent session types
 
 %% unclassified
 
-\cite{DBLP:conf/fase/HuY16} (socaml: dynamic check)
+\cite{DBLP:conf/fase/HuY16} (dynamic check)
 
-\cite{DBLP:conf/fase/HuY17} (socaml: dynamic check)
+\cite{DBLP:conf/fase/HuY17} (dynamic check)
 
 \subsection{Haskell}
 \label{sec:hask-impl}
@@ -1043,16 +1053,28 @@ are independent in their approach, our multi-channel session types
 impose a choreography on all connections, which is closer in spirit to
 multiparty session types. 
 
-\cite{DBLP:conf/haskell/LindleyM16}
+Lindley and Morris \cite{DBLP:conf/haskell/LindleyM16} extend a HOAS
+encoding of linear lambda calculus with session primitives in the
+style of GV \cite{DBLP:journals/jfp/GayV10}. They call their approach
+``parameterized tagless'', which means 
 
 \cite{DBLP:conf/popl/OrchardY16} % does it come with a Haskell implementation?
 
 \subsection{OCaml}
 \label{sec:ocaml}
 
-\cite{DBLP:journals/jfp/Padovani17} (checks linearity at run time)
+FuSe \cite{DBLP:journals/jfp/Padovani17} (checks linearity at run time)
 
-Session OCaml \cite{DBLP:journals/scp/ImaiYY19}
+Session OCaml \cite{DBLP:journals/scp/ImaiYY19} enforces linearity by
+parametric polymorphism based on a technique by
+Garrigue\footnote{Available at
+  \url{https://github.com/garrigue/safeio}.}, but significantly
+extended to deal with session types.
+It can handle a fixed number of channels at the same time with
+globally defined channel names (slot names). The technique hinges on
+the polymorphic types of the global slot names.
+Session types are inferred from programs that written in a notation
+similar to FuSe and GV.
 
 
 \subsection{Java}
@@ -1089,6 +1111,10 @@ fulfill the protocol up to the closing of the connection.
 \cite{DBLP:conf/coordination/LagaillardieNY20}
 \cite{DBLP:journals/corr/abs-1909-05970}
 \cite{DBLP:conf/icfp/JespersenML15}
+
+\section{Conclusions}
+\label{sec:conclusions}
+
 
 
 %%

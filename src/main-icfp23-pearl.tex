@@ -364,7 +364,8 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
 The source of this document includes a number of literate Agda
 scripts which will be submitted as an anonymized supplement (to be
 turned into an artifact). Every line of code that is typeset in color
-has been checked by Agda.
+has been checked by Agda. Bear in mind that this code is a proof of
+concept, rather than a full implementation.
 
 
 Working knowledge of Agda is not a hard requirement for understanding the
@@ -404,7 +405,7 @@ Here are two examples for session types: the types of the server for a
 binary operation and a unary operation, respectively.
 \stExampleBinpUnP
 
-In a popular functional session type theory \cite{DBLP:journals/jfp/GayV10}, there are primitives to
+In GV, a widely studied functional session type theory \cite{DBLP:journals/jfp/GayV10}, there are primitives to
 send and receive values and to close a channel with types like this:
 \begin{align*}
   \mathtt{send} & : (\Atsend{T}{S} \otimes T) \multimap S &
@@ -593,6 +594,11 @@ runs a unary function and recurses or just ends the protocol. We
 define {\Aamp} as a smart constructor as in Section~\ref{sec:select-choice}.
 \rstExampleManyUnaryp
 
+\subsection{Commands}
+\label{sec:commands}
+
+
+
 The {\ACommand} type is straightforward to extend. It obtains a new
 parameter $n$ to match the parameter of the session type used as an
 index. We only show the two new cases.
@@ -603,10 +609,14 @@ service that repeatedly adds numbers as they are received and sends the partial
 sum as a response each time.
 \rstSumupCommand
 
+\subsection{Interpretation}
+\label{sec:interpretaion}
+
+
 Executing a command with recursion requires a new component in the
 executor. Whenever execution enters a {\AMU} command, this component
-saves the body of the {\AMU} in a stack. Upon a {\ACONTINUE~$i$}
-command, we grab the corresponding loop body from the stack and
+saves the entire loop on a stack. When we encounter a {\ACONTINUE~$i$}
+command, we grab the corresponding loop from the stack and
 continue with it. There are a few complications in setting up this new
 component that we call {\ACommandStore}.
 
@@ -614,31 +624,30 @@ component that we call {\ACommandStore}.
   \begin{align*}
     &
       \begin{array}[t]{|ll|}
-        0 &\mapsto \ASession~1
+        0 &\mapsto \ASession~0
       \end{array}
     &&
       \begin{array}[t]{|ll|}
-        0 &\mapsto \ASession~2 \\
-        1 &\mapsto \ASession~1
+        0 &\mapsto \ASession~1 \\
+        1 &\mapsto \ASession~0
       \end{array}
           &&
              \dots
     &&
        \begin{array}[t]{|ll|}
-         0 & \mapsto \ASession~(1+n) \\
-         1 & \mapsto \ASession~n \\
+         0 & \mapsto \ASession~n \\
+         1 & \mapsto \ASession~(n-1) \\
            & \vdots \\
-         n-1 & \mapsto \ASession~1
+         n-1 & \mapsto \ASession~0
        \end{array}
   \end{align*}
   \caption{The session type indices in {\ACommandStore} after 1, 2, and $n$ loop entries}
   \label{fig:commandstore}
 \end{figure}
 Its type requires some thought.  The top-level type is a
-{\ASession~0}. When we enter the first loop, its body refers to a
-session of type {\ASession~1}. Hence, the {\ACommandStore} contains
+{\ASession~0}. When we enter the first loop, its type is {\ASession~0}. Hence, the {\ACommandStore} contains
 one entry (left column in Figure~\ref{fig:commandstore}).
-Entering the next loop pushes a body for the type {\ASession~2}
+Entering the next loop pushes a loop of type {\ASession~1}
 (middle column). After entering the $n$-th loop, we obtain the
 picture on the right of Figure~\ref{fig:commandstore}. Here is a
 suitable type definition.
@@ -664,9 +673,9 @@ identity functions) from $\AFin~n$ to $\AFin~(\Asuc~n)$.
 \rstExecutorSignature\vspace{-1.5\baselineskip}
 \rstExecutor
 
-The execution of {\AMU} just pushes the loop body onto the
-{\ACommandStore}.
-The case for {\ACONTINUE~$i$} jumps to the selected command and pops
+The execution of {\AMU} just pushes the loop onto the
+{\ACommandStore} and executes the body.
+The case for {\ACONTINUE~$i$} jumps to the selected loop and pops
 all intervening continuations from the store. It also reveals another complication. The recursive
 call to {\Aexecutor} happens on a command drawn from the {\ACommandStore}. This
 command is unrelated to the current command, which upsets Agda's
@@ -703,6 +712,29 @@ There are at least three possibilities.
 The current formalization leaves that question open and just breaks
 the protocol. Our preferred solution is a Haskell implementation,
 which omits the gas and thus sticks to the protocol.
+u
+\subsection{What about the client?}
+\label{sec:what-about-client}
+
+The commands we presented so far for recursive sessions are fine for
+servers that repeatedly perform the same action. However, a client
+might want to perform different actions on each iteration. While such
+a behavior may be encoded in the application state, it would not be an
+enjoyable experience for the programmer.
+
+Hence, we propose an {\AUNROLL} command that
+enables the specification of a command for one loop iteration at a time.
+\rstCommandUNROLL
+It specifies one command for the session type's loop body and a
+continuation command for the whole type to cover subsequent
+iterations. 
+Executing this command means to execute its body and push its
+continuation on the stack.
+\rstExecutorUNROLL
+As an example, we write a client for the {\Amanyunaryp} protocol that
+iterates the protocol two times before it terminates. In each round,
+it sends an integer and ignores the response.
+\rstClientExample
 
 \section{Going monadic}
 \label{sec:going-monadic}
@@ -710,7 +742,7 @@ which omits the gas and thus sticks to the protocol.
 
 We already remarked on the monadic structure apparent in the
 callbacks and in the implementation of the {\Aexecutor}
-function. Indeed, moving on to a monadic interface makes our session
+function. Indeed, moving on to a monadic interface might make our session
 programs more concise.
 
 We start with a slightly refactored type of commands. More precisely,
@@ -929,8 +961,8 @@ the first recursive call and the right one to the second.
 \label{sec:interpretation}
 
 
-We show the full {\Aexecutor} function to explain why the code in
-this section is not fully monadic.
+We show the full {\Aexecutor} function and finish with a rationale why
+the callback interface in this section is not monadic.
 \cstExec
 
 The implementation of {\ACSKIP} just executes the action.
@@ -953,24 +985,123 @@ which provides a nontrivial continuation. In
 Section~\ref{sec:going-circles}, the function {\Aexecutor} is tail
 recursive, but here it is not!
 
-
+Now we turn to the question of the monadic callback interface. 
+Examination of the code reveals that the state monad is no longer the most appropriate model of a
+callback. On first sight, the type $A \to 
+M~B$ is the same as $\AReaderT~A~M~B $. However, the case 
+for composition shows that a reader does not fit because
+the type $A$ of the reader's source changes between recursive calls to
+the interpreter. Moreover, the callbacks for composition do not fit
+the pattern of the reader monad at all.
+Thus, we refrain from the monadic interface.
 
 
 \section{Handling multiple channels}
 \label{sec:handl-mult-chann}
+\input{latex/ST-multichannel.tex}
 
-We have to amend a final element to fully encompass traditional binary
+We have to amend some final elements to fully encompass traditional binary
 session types: a thread can open and manipulate many channels at a
-time. So far, our interfaces were restricted to single channels. We
-now turn to lifting this restriction.
+time and channels can be delegated. So far, our interfaces were
+restricted to single channels and to transmitting pure data (i.e., no channels). We
+now turn to lifting these restrictions.
 
+To concentrate on the new issues, 
+we start out by slightly rephrasing session types as we
+know them from Section~\ref{sec:select-choice}. In particular, we
+restrict to binary branching and leave the extension
+to finitary branching as well as the addition of recursion as an
+exercise to the reader. Generally, these types describe 
+the communication on a single channel, as before. There are two novel
+aspects: we factorize the specification of the direction of
+communication and we add a special type for channel delegation, i.e.,
+sending or receiving a channel.
 
+\multiSession
+
+An actual multichannel session type describes the interleaved
+communication on all channels at once. It comes with features and
+restrictions very similar to multiparty session types \cite{DBLP:journals/jacm/HondaYC16}.
+
+\multiMSesson
+
+A multichannel session type {\AMSession~n}, ranged over by $M$, is indexed by the number $n$ of
+channels that it governs. The names of the channels are represented by
+de Bruijn indices. Unlike in other embedded implementations, a
+multichannel type covers the full choreography of a communicating
+application: forking a new process is combined with channel creation
+\cite{where?}, branching and transmitting values as usual, closing a
+channel, delegation, and terminating the application after all
+protocols are finished and their respective channels closed.
+
+Each command, except {\ACfork} and {\ACterminate}, takes a parameter
+$c$ that identifies the channel on which the command operates. 
+The command to transmit a value (\ACtransmit) is as before, save the
+direction and channel parameters. Branching (\ACbranch) is as before
+except the extra function {\ACheck}: it ensures that a branch is
+reasonable by enforcing that the session on every channel except $c$
+is not affected by the branch. This restriction is called
+``Causality'' in the context of multiparty session types. It is needed
+because only the party on other end of channel $c$ knows about the
+branching, but the others do not.
+
+The {\ACclose} command has a continuation parameter because a channel
+can be closed in the middle of a choreography without terminating the
+multichannel protocol. Once all channels are closed, the choreography
+can be concluded using the {\ACterminate} command.
+
+The {\ACfork} command creates a new thread which runs protocol $M_1$
+whereas the current thread continues with $M_2$. The currently open
+channels are distributed among the threads according to the {\ASplit}
+parameter. Communication with the new thread is established by
+creating a new channel, which is mapped to address {\Azero} in both
+threads. Moreover, the {\ACheckDual} predicate makes sure that the
+session types of the two ends of this channel are dual to one another.
+
+The delegation commands deal with sending (receiving) a channel over
+another channel. Their types are sufficiently different so as not to
+factor out the direction. To send a channel $j$ using {\ACdelegateOUT}, we need to know that
+it is not the same channel we are sending on, its simple session type,
+and that the continuation command has one fewer channel.
+To receive a channel using {\ACdelegateIN} we just map it to address
+{\Azero} in the continuation command.
+
+The function {\Aproject} is similar to the projection from global
+types to local types in multiparty session types. We make use of
+auxiliary functions that manipulate de Bruijn indices:
+{\AlocateSplit~sp-c~c} determines the target thread of channel $c$ and
+its local index; {\Aadjust} changes the index to account for a channel
+that is removed from choreography. {\ACheck} and {\ACheckDual} are
+implemented using the obvious formulas.
+\multiProjection
+
+Given the preceding discussion as well as the discussion in previous
+sections, the types of commands should
+straightforward.
+
+\multiCmd
+
+Likewise, the interpreter {\Aexec} is an easy exercise.
+
+\multiExec
 
 \newpage
 
 \section{Discussion}
 \label{sec:discussion}
 
+% \subsection{To monad or not to monad}
+% \label{sec:monad-or-not}
+
+% We proposed a monadic callback interface in Section~\ref{sec:going-monadic},
+% but reverted to a non-monadic one in subsequent sections. While the
+% monadic implementation of the interpreter is worthwhile and improves
+% conciseness and readability, it is not clear whether there is a
+% significant difference for the callbacks themselves.
+% To be fair, the choice to revert to the nonmonadic interface in
+% Section~\ref{sec:context-free-session} was partially forced on us by
+% some restrictions on level polymorphism in the implementation of indexed functors in
+% the standard library.
 
 \subsection{Selection and choice with vectors}
 \label{sec:select-choice-with}
@@ -993,7 +1124,7 @@ We leave such a compiler to future work.
 
 Alternatively, one might create a library implementation that exposes
 the commands, which are reified in a datatype in our approach, as
-functions. This approach has been pioneered by Reynolds and
+functions. This approach has been pioneered by Reynolds \cite{Reynolds1994} and
 subsequently applied, e.g., in the context of partial evaluation and
 program analysis \cite{DBLP:journals/jfp/Thiemann99,DBLP:journals/jfp/CaretteKS09}.
 
@@ -1025,6 +1156,12 @@ programmer. No such cleverness is needed in our approach; types are
 human-readable and the interactive Agda system helps with constructing
 types and programs, but session types are not inferred.
 
+None of the existing embeddings offers a feature like our dynamic
+selection. However, dynamic selection can be viewed as a special case
+of label-dependent session types
+\cite{DBLP:journals/pacmpl/ThiemannV20}, so that our  approach
+implements part of that theory, too.
+
 %% dynamic selection -> label-dependent session types
 
 %% unclassified
@@ -1054,16 +1191,27 @@ impose a choreography on all connections, which is closer in spirit to
 multiparty session types. 
 
 Lindley and Morris \cite{DBLP:conf/haskell/LindleyM16} extend a HOAS
-encoding of linear lambda calculus with session primitives in the
-style of GV \cite{DBLP:journals/jfp/GayV10}. They call their approach
-``parameterized tagless'', which means 
+encoding of linear lambda calculus with monads and session primitives
+in the style of GV \cite{DBLP:journals/jfp/GayV10}. They call their approach
+``parameterized tagless'' \cite{DBLP:journals/jfp/CaretteKS09}, which means that they encode the syntax of
+lambda calculus and the session primitives in term of parameterized
+functions in a type class with implementations provided subsequently.
 
-\cite{DBLP:conf/popl/OrchardY16} % does it come with a Haskell implementation?
+Orchard and Yoshida \cite{DBLP:conf/popl/OrchardY16} discuss
+connections between session types and effect systems. They present an
+implementation of session types in Haskell via an effect system encoding.
+
 
 \subsection{OCaml}
 \label{sec:ocaml}
 
-FuSe \cite{DBLP:journals/jfp/Padovani17} (checks linearity at run time)
+The implementation of FuSe \cite{DBLP:journals/jfp/Padovani17}
+consists of a typed layer on top of untyped channels (just like our
+approach).  It presents an API inspired by GV to the user, supports
+type inference, and checks linearity at run time. The approach is
+extensible to context-free session types
+\cite{DBLP:journals/toplas/Padovani19} at the expense of some user
+annotations (while keeping type inference).
 
 Session OCaml \cite{DBLP:journals/scp/ImaiYY19} enforces linearity by
 parametric polymorphism based on a technique by

@@ -93,8 +93,9 @@ arithp = & [ binaryp , unaryp ]
 variable
   a b : Level
   A A′ A″ A₁ A₂ : Set
-  t : Type
+  T : Type
   s s₁ s₂ : Session
+  S : Session
   M : Set a → Set b
 
 T⟦_⟧ : Type → Set
@@ -113,14 +114,11 @@ syntax Monadic (λ M → X) = Monad M ⇒ X
 \begin{code}
 data Cmd (A : Set) : Session → Set₂ where
   END    : Cmd A end
-  SKIP   : (Monad M ⇒ StateT A M ⊤)
-    → Cmd A s → Cmd A s
-  SEND   : (Monad M ⇒ StateT A M T⟦ t ⟧)
-    → Cmd A s → Cmd A (send t s)
-  RECV   : (Monad M ⇒ (T⟦ t ⟧ → StateT A M ⊤))
-    → Cmd A s → Cmd A (recv t s)
-  SELECT : ∀ {si} → (i : Fin k) → Cmd A (si i) → Cmd A (⊕′ si)
-  CHOICE : ∀ {si} → ((i : Fin k) → Cmd A (si i)) → Cmd A (&′ si)
+  SKIP   : (Monad M ⇒ StateT A M ⊤) → Cmd A S → Cmd A S
+  SEND   : (Monad M ⇒ StateT A M T⟦ T ⟧) → Cmd A S → Cmd A (send T S)
+  RECV   : (Monad M ⇒ (T⟦ T ⟧ → StateT A M ⊤)) → Cmd A S → Cmd A (recv T S)
+  SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
+  CHOICE : ∀ {Si} → ((i : Fin k) → Cmd A (Si i)) → Cmd A (&′ Si)
 \end{code}}
 \newcommand\mstExampleServers{%
 \begin{code}
@@ -137,7 +135,7 @@ arithp-command = CHOICE λ where
 \end{code}}
 \newcommand\mstExecutor{%
 \begin{code}
-exec : {s : Session} → Cmd A s → StateT A (ReaderT Channel IO) ⊤
+exec : Cmd A S → StateT A (ReaderT Channel IO) ⊤
 exec END             = ask >>= liftIO ∘ primClose
 exec (SKIP act cmd)  = act >> exec cmd
 exec (SEND getx cmd) = getx >>= λ x → ask >>= liftIO ∘ primSend x >> exec cmd

@@ -113,7 +113,7 @@ syntax Monadic (λ M → X) = Monad M ⇒ X
 \newcommand\mstCommand{%
 \begin{code}
 data Cmd (A : Set) : Session → Set₂ where
-  END    : Cmd A end
+  CLOSE  : Cmd A end
   SKIP   : (Monad M ⇒ StateT A M ⊤) → Cmd A S → Cmd A S
   SEND   : (Monad M ⇒ StateT A M T⟦ T ⟧) → Cmd A S → Cmd A (send T S)
   RECV   : (Monad M ⇒ (T⟦ T ⟧ → StateT A M ⊤)) → Cmd A S → Cmd A (recv T S)
@@ -123,10 +123,10 @@ data Cmd (A : Set) : Session → Set₂ where
 \newcommand\mstExampleServers{%
 \begin{code}
 addp-command : Cmd ℤ binaryp
-addp-command = RECV put $ RECV (modify ∘′ _+_) $ SEND get $ END
+addp-command = RECV put $ RECV (modify ∘′ _+_) $ SEND get $ CLOSE
 
 negp-command : Cmd ℤ unaryp
-negp-command = RECV (put ∘ -_) $ SEND get $ END
+negp-command = RECV (put ∘ -_) $ SEND get $ CLOSE
 
 arithp-command : Cmd ℤ arithp
 arithp-command = CHOICE λ where
@@ -136,7 +136,7 @@ arithp-command = CHOICE λ where
 \newcommand\mstExecutor{%
 \begin{code}
 exec : Cmd A S → StateT A (ReaderT Channel IO) ⊤
-exec END             = ask >>= liftIO ∘ primClose
+exec CLOSE           = ask >>= liftIO ∘ primClose
 exec (SKIP act cmd)  = act >> exec cmd
 exec (SEND getx cmd) = getx >>= λ x → ask >>= liftIO ∘ primSend x >> exec cmd
 exec (RECV putx cmd) = ask >>= liftIO ∘ primRecv >>= putx >> exec cmd

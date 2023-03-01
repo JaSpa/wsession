@@ -90,7 +90,8 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{How to Embed Session Types Without Linearity}
+\title{Intrisically Typed Sessions Without Linearity}
+%\title{How to Embed Session Types Without Linearity}
 \subtitle{Functional Pearl}
 
 %%
@@ -127,7 +128,27 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-  TBD
+  All formalizations of session types rely on linear types for soundness as
+  session-typed communication channels must change their type at every
+  operation. Embedded language implementations of session types follow
+  suit. They either rely on clever typing constructions to guarantee
+  linearity statically, or on run-time checks that approximate
+  linearity.
+
+  We present a new language embedded implementation of session types,
+  which is inspired by the inversion of control design principle. With
+  our approach, all application programs are intrinsically session typed and
+  unable to break linearity by construction. Linearity remains a proof
+  obligation for a tiny encapsulated
+  interpreter that can be discharged once and for all when the library
+  is built.
+
+  We demonstrate that our proposed design extends to a wide range of
+  features of session type systems: branching, recursion, multichannel
+  and higher-order session, as well as context-free sessions.
+
+  The development reported in this paper is fully backed by
+  typechecked Agda code.
 \end{abstract}
 
 %%
@@ -297,24 +318,37 @@ negp-server  c0 =                    -- c0 : ?int.!int.end
   close c2
 \end{lstlisting}
 By linearity, the \texttt{recv} operation consumes \texttt{c0};
-otherwise, another \texttt{recv} could be applied, thus breaking the
-protocol.
-Analogous arguments apply to \texttt{c1} and \texttt{c2}.
+otherwise, another \texttt{recv} could be applied could \texttt{c0},
+thus breaking the protocol.
+Analogous arguments apply to \texttt{c1} and \texttt{c2}, e.g., once
+the channel \texttt{c2} is closed, it cannot be closed again.
 \item[Callback approach] The callback interface to session-typed
-  communication proposed in this work consists of a datatype of commands, {\ACommand}, indexed by an
-  application state $A$ and a
-  session type. Moreover, there is an encapsulated interpreter
-  {\Aexecutor} to  execute commands.\footnote{For all details see Section~\ref{sec:finite-nonbr-simple}.} 
+  communication proposed in this work consists of two items.
+  \begin{enumerate}
+  \item A datatype of commands, {\ACommand}, indexed by an application
+    state $A$ and a session type. This datatype constitutes an
+    intrinsically session-typed encoding of communicating functional programs.
+  \item An encapsulated interpreter {\Aexecutor} to execute
+    commands.\footnote{The function {\stTypeInterpretationSignature}
+      maps type syntax to its interpretation as an Agda type.
+      For further
+      details see Section~\ref{sec:finite-nonbr-simple}.}
+  \end{enumerate}
 \stCommand
 
   The {\ACSEND} command has a callback to obtain the value to be sent
   from the application state. Similarly, the {\ACRECV} command has a
   callback to inject the received value in the application state. Both
   take a continuation command of type {\ACommand~$A$~$S$} that deals
-  with the continuation session $S$.
+  with the continuation session $S$. The {\ACCLOSE} command signifies
+  the end of the protocol.
 
-  A program looks similar to the traditional one where we choose
-  {\AZ}, the integers, as the application state.
+  A program is expressed as a value of type {\ACommand}. It looks similar to the traditional one where we choose
+  {\AZ}, the integers, as the application state. The encoding relies
+  strongly on the core idea of functional programming: functions
+  (callbacks) as first class values.\footnote{The operator {\Adollar}
+    stands for infix function application. It associates to the
+    right. (The second {\Adollar} could be omitted.)}
 \stNegpCommand
 
   The least sophisticated interpreter takes a command, a suitable
@@ -333,39 +367,46 @@ Analogous arguments apply to \texttt{c1} and \texttt{c2}.
 \label{sec:contributions}
 
 \begin{itemize}
-\item We show how to deploy the callback approach to binary session
+\item We introduce the callback approach to binary session
   types in the context of dependently-typed functional
-  programming. Our vehicle is the language Agda, but we expect our
-  development to be transferrable to Haskell, either via compilation or via translation
+  programming. We deploy it as a proof-of-concept specification in the
+  language Agda, but we expect our development to be transferrable to
+  Haskell, either via compilation or via translation 
   \cite{DBLP:conf/haskell/CockxME0N22}.
 \item Linearity of session handling is ensured by verifying linear
   handling of command execution in a small interpreter that forms the
   trusted computing base of our approach. There is no need for linear
   types in the type system of the host language, nor is there a need
-  for simulating linearity.
+  for clever type constructions to simulate linearity.
 \item We demonstrate that the approach extends to most familiar
   session type constructions: branching
   (Section~\ref{sec:select-choice}), recursion
-  (Section~\ref{sec:going-circles}), higher-order sessions.
+  (Section~\ref{sec:going-circles}), multichannel and
+  higher-order sessions (Section~\ref{sec:handl-mult-chann}). 
 \item The extension to operate on multiple channels is significant and
-  mostly orthogonal to the other features. Interestingly, it requires
+  mostly orthogonal to the other features. Our approach to
+  multichannel sessions requires
   several elements of multiparty session types.
 \item We propose a new dynamic selection operation in the context of
   branching session types (Section~\ref{sec:select-choice}).
 \item We extend the callback approach to context-free session types
   (with branching and recursion), which in turn requires a more
   sophisticated, dependently-typed encoding of commands than regular
-  session types.
+  session types (Section~\ref{sec:context-free-session}).
 \item All our session type systems inherit the polymorphism from their
   host language, Agda.
-\item For monad lovers we describe a version with a monadic encoding of callbacks.
+\item For monad lovers Section~\ref{sec:going-monadic} describes a
+  version with a monadic encoding of callbacks. 
 \end{itemize}
 
 The source of this document includes a number of literate Agda
 scripts which will be submitted as an anonymized supplement (to be
 turned into an artifact). Every line of code that is typeset in color
-has been checked by Agda. Bear in mind that this code is a proof of
-concept, rather than a full implementation.
+has been checked by Agda. At present, the interpreters are implemented
+against a small API of monadic IO operations to manipulate untyped
+channels. This API can be implemented in Haskell using Agda's foreign
+function interface.\footnote{An as-yet unfinished programming exercise
+  that we plan to complete for artifact submission.}
 
 
 Working knowledge of Agda is not a hard requirement for understanding the
@@ -391,8 +432,8 @@ type of the communication channel.\footnote{Agda supports a mixfix
   save parentheses.}
 \stFiniteType
 \stFiniteSession
-These types correspond to the standard grammar of session types, where
-$T$ is the type of payloads that can be transmitted and $S$ is the
+These Agda types correspond to the standard grammar of session types, where
+$T$ is the type of payload values that can be transmitted and $S$ is the
 type of sessions. 
 \begin{align*}
   T &::= \Aint \mid \Abool  & S &::= \Atsend{T}{S} \mid \Atrecv{T}{S} \mid \Atend
@@ -426,8 +467,8 @@ the updated channel; the \texttt{close} operation \emph{consumes} the
 channel and returns a unit value. Enforcing this linearity is required
 for soundness.
 
-In this work, we take a different approach inspired by programming with
-callbacks. Instead of providing \texttt{send} and \texttt{recv}
+In this work, we take a different approach inspired by callback
+programming. Instead of providing \texttt{send} and \texttt{recv} 
 primitives to the programmer, we ask the programmer to define the
 ``application logic'' by implementing a command value whose type {\ACommand} is indexed by
 a session type. This definition relies on an interpretation of
@@ -437,7 +478,7 @@ types as Agda types.
 In this definition, the type parameter $A$ embodies the application state. 
 Each $\ACSEND$ command takes a state transformer that extracts the value to
 send from the current application state; each $\ACRECV$ command takes
-a state transformer that is indexed by the received value; the $\ACEND$
+a state transformer that is indexed by the received value; the $\ACCLOSE$
 command terminates the session. In fact, we could provide the
 application logic by actions in a state monad over the application
 state $A$. We defer the shift to a monadic interface to Section~\ref{sec:going-monadic},
@@ -487,7 +528,7 @@ the interpretation of each command executes the single communication
 action designated by the corresponding session type operator. The
 correct sequencing according to the session type is imposed by the
 sequencing constraint underlying the {\AIO} monad. Indeed, this
-observation was the key to employ monads for APIs to state-based
+observation was the reason to employ monads for APIs to state-based
 operations in pure functional languages \cite{DBLP:conf/popl/JonesW93}.
 
 \section{Selection and choice}
@@ -588,7 +629,7 @@ references the $i$th variable, the innermost binding being $0$.
 \rstSession
 
 Further extending our running example, we redefine the protocol {\Aunaryp} as a function
-that takes the rest of the protocol and wrap it into a recursive
+that takes the rest of the protocol and wraps it into a recursive
 type. The session type {\Amanyunaryp} is a recursive type that either
 runs a unary function and recurses or just ends the protocol. We
 define {\Aamp} as a smart constructor as in Section~\ref{sec:select-choice}.
@@ -599,7 +640,7 @@ define {\Aamp} as a smart constructor as in Section~\ref{sec:select-choice}.
 
 
 
-The {\ACommand} type is straightforward to extend. It obtains a new
+The {\ACommand} type obtains a new
 parameter $n$ to match the parameter of the session type used as an
 index. We only show the two new cases.
 \rstCommand
@@ -914,7 +955,7 @@ The code of the servers does not look that different from
 before. However, unlike before, each server is now reusable as part of
 the implementation of a larger protocol. One indication is the use of
 the parameters $V$ and $W$ in the types, another is the lack of the
-{\ACEND} constructor which prescribes closing the connection.
+{\ACCLOSE} constructor which prescribes closing the connection.
 
 As these protocols are still tail-recursive, their implementation uses
 a binary composition operator for commands that is tailored for this
@@ -1127,6 +1168,8 @@ the commands, which are reified in a datatype in our approach, as
 functions. This approach has been pioneered by Reynolds \cite{Reynolds1994} and
 subsequently applied, e.g., in the context of partial evaluation and
 program analysis \cite{DBLP:journals/jfp/Thiemann99,DBLP:journals/jfp/CaretteKS09}.
+
+
 
 \subsection{Multiparty session types}
 \label{sec:mult-sess-types}

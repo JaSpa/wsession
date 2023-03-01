@@ -97,7 +97,14 @@ variable
   A A′ A″ A₁ A₂ : Set
   T t : Type
   S s s₁ s₂ : Session
+
+module type-formatting where
+  postulate
 \end{code}
+\newcommand\stTypeInterpretationSignature{%
+\begin{code}[inline]
+    T⟦_⟧ : Type → Set
+\end{code}}
 \newcommand\stTypeInterpretation{%
 \begin{code}
 T⟦_⟧ : Type → Set
@@ -130,7 +137,7 @@ module formatting-deselect where
 \newcommand\stCommand{%
 \begin{code}
 data Cmd (A : Set) : Session → Set where
-  END    : Cmd A end
+  CLOSE  : Cmd A end
   SEND   : (A → A × T⟦ T ⟧) → Cmd A S → Cmd A (‼ T ∙ S)
   RECV   : (T⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
 \end{code}}
@@ -146,22 +153,22 @@ data Cmd (A : Set) : Session → Set where
 \newcommand\stAddpCommand{%
 \begin{code}
 addp-command : Cmd ℤ binaryp
-addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ END
+addp-command = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ CLOSE
 \end{code}}
 \newcommand\stAddpCommandAlternative{%
 \begin{code}
 addp-command′ : Cmd ℤ binaryp
-addp-command′ = RECV const $ RECV _+_ $ SEND < id , id > $ END
+addp-command′ = RECV const $ RECV _+_ $ SEND < id , id > $ CLOSE
 \end{code}}
 \newcommand\stNegpCommand{%
 \begin{code}
 negp-command : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
-negp-command = RECV (λ x a → x) $ SEND (λ a → ⟨ a , - a ⟩) $ END
+negp-command = RECV (λ x a → x) $ SEND (λ a → ⟨ a , - a ⟩) $ CLOSE
 \end{code}}
 \newcommand\stNegpCommandAlternative{%
 \begin{code}
 negp-command′ : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
-negp-command′ = RECV const $ SEND (λ a → ⟨ a , - a ⟩) $ END
+negp-command′ = RECV const $ SEND (λ a → ⟨ a , - a ⟩) $ CLOSE
 \end{code}}
 \newcommand\stArithpCommand{%
 \begin{code}
@@ -185,7 +192,7 @@ exec : Cmd A S → A → Channel → IO A
 \end{code}}
 \newcommand\stExecutor{%
 \begin{code}
-exec END state ch = do
+exec CLOSE state ch = do
   primClose ch
   pure state
 exec (SEND getx cmd) state ch = do
@@ -249,7 +256,7 @@ fffun true = 42
 
 
 data Cmd′ (A : Set) : Set → Session → Set₁ where
-  END    : Cmd′ A A end
+  CLOSE  : Cmd′ A A end
   SEND   : (A → T⟦ T ⟧ × A′) → Cmd′ A′ A″ S → Cmd′ A A″ (send T S)
   RECV   : (T⟦ T ⟧ → A → A′) → Cmd′ A′ A″ S → Cmd′ A A″ (recv T S)
   SELECT21 : (A → A₁ ⊎ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
@@ -258,7 +265,7 @@ data Cmd′ (A : Set) : Set → Session → Set₁ where
   SELECT22 : (A → ΣB A₁ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
 
 exec′ : {s : Session} → Cmd′ A A″ s → (init : A) → Channel → IO A″
-exec′ END state ch = do
+exec′ CLOSE state ch = do
   primClose ch
   pure state
 exec′ (SEND getx cmd) state ch = do

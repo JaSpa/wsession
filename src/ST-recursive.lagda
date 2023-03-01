@@ -139,7 +139,7 @@ module formatting2 where
 \end{code}}
 \newcommand\rstCommand{%
 \begin{code}
-data Cmd n (A : Set) : Session n → Set where
+data Cmd (n : ℕ) (A : Set) : Session n → Set where
   LOOP     : Cmd (suc n) A S → Cmd n A (μ S)
   CONTINUE : (i : Fin n) → Cmd n A (` i)
 \end{code}}
@@ -148,7 +148,7 @@ data Cmd n (A : Set) : Session n → Set where
   UNROLL   : Cmd (suc n) A S → Cmd n A (μ S) → Cmd n A (μ S)
 \end{code}}
 \begin{code}[hide]
-  END    : Cmd n A end
+  CLOSE  : Cmd n A end
   SEND   : (A → A × T⟦ T ⟧) → Cmd n A S → Cmd n A (‼ T ∙ S)
   RECV   : (T⟦ T ⟧ → A → A) → Cmd n A S → Cmd n A (⁇ T ∙ S)
   SELECT : ∀ {Si} → (i : Fin k) → Cmd n A (Si i) → Cmd n A (⊕′ Si)
@@ -168,7 +168,7 @@ addup-command cmd = RECV (λ x a → x + a) $ SEND (λ a → ⟨ a , a ⟩) $ cm
 runningsum-command : Cmd 0 ℤ many-unaryp
 runningsum-command = LOOP $ CHOICE λ where
   zero → addup-command (CONTINUE zero)
-  (suc zero) → END
+  (suc zero) → CLOSE
 \end{code}}
 \newcommand\rstPostulates{%
 \begin{code}
@@ -207,7 +207,7 @@ module alternative-executor where
   exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
   exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
-  exec END cms st ch = do
+  exec CLOSE cms st ch = do
     primClose ch
     pure (inj₂ st)
   exec (SEND getx cmd) cms st ch = do
@@ -241,7 +241,7 @@ Gas = ℕ
 exec : Gas → Cmd n A S → CmdStore n A → (init : A) → Channel → IO A
 \end{code}}
 \begin{code}[hide]
-exec k END cms state ch = do
+exec k CLOSE cms state ch = do
   primClose ch
   pure state
 exec k (SEND getx cmd) cms state ch = do
@@ -286,5 +286,5 @@ runningsum-client : Cmd 0 ⊤ (dual many-unaryp)
 runningsum-client =
   UNROLL (SELECT zero $ SEND (λ x → ⟨ tt , + 17 ⟩) $ RECV constᵣ (CONTINUE zero)) $
   UNROLL (SELECT zero $ SEND (λ x → ⟨ tt , + 4 ⟩)  $ RECV constᵣ (CONTINUE zero)) $
-  LOOP (SELECT (suc zero) END)
+  LOOP (SELECT (suc zero) CLOSE)
 \end{code}}

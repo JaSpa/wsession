@@ -14,3 +14,6 @@ $(PREFIX)/%.tex: %.lagda
 
 $(ZIPGOAL): $(ZIPFILES)
 	zip $(ZIPGOAL) $(ZIPFILES)
+
+.PHONY: all
+all: $(GOAL).pdf $(ZIPGOAL)

@@ -29,7 +29,10 @@ Imports Channels.
 
 ### ST-indexed-contextfree.lagda
 
-Context-free sesssion types as presented in Section 6. 
+Context-free session types as presented in Section 6. 
 Imports Channels, Utils.
 
-### ST-
+### ST-multichannel.lagda
+
+Multichannel session types according to Section 7.
+No local imports.

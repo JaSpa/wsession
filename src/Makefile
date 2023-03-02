@@ -6,6 +6,8 @@ PREFIX= latex
 ZIPFILES= README.md $(addsuffix .lagda, $(TARGET_MODULES))
 ZIPGOAL= supplement-icfp23.zip
 
+ARXIVGOAL= $(GOAL).zip
+
 $(GOAL).pdf: $(GOAL).tex $(TARGET_FILES)
 	pdflatex  --synctex=1 -interaction=nonstopmode $(GOAL)
 
@@ -13,7 +15,10 @@ $(PREFIX)/%.tex: %.lagda
 	agda --latex --only-scope-checking $<
 
 $(ZIPGOAL): $(ZIPFILES)
-	zip $(ZIPGOAL) $(ZIPFILES)
+	zip $@ $^
+
+$(ARXIVGOAL): $(GOAL).tex $(GOAL).bbl $(TARGET_FILES) acmart.cls agda.sty ACM-Reference-Format.bst
+	zip $@ $^
 
 .PHONY: all
 all: $(GOAL).pdf $(ZIPGOAL)

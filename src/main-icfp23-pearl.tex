@@ -1,5 +1,5 @@
-\documentclass[acmsmall,screen,anonymous,review]{acmart}
-
+\documentclass[acmsmall,screen]{acmart}
+\pdfoutput=1
 \usepackage{agda}
 \usepackage{stmaryrd}
 \usepackage{listings}
@@ -90,7 +90,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Intrisically Typed Sessions With Callbacks}
+\title{Intrinsically Typed Sessions With Callbacks}
 %\title{How to Embed Session Types Without Linearity}
 \subtitle{Functional Pearl}
 
@@ -149,7 +149,7 @@ multichannel extension provides an embedded implementation of
 session types which guarantees deadlock freedom by construction.
 
 The development reported in this paper is fully backed by
-typechecked Agda code.
+type-checked Agda code.
 \end{abstract}
 
 %%
@@ -423,12 +423,12 @@ paper. We strive to make the code accessible to readers who are
 knowledgable in Haskell by explaining features specific
 to Agda as they are encountered.
 
-\section{Finite nonbranching session types}
+\section{Finite non-branching session types}
 \label{sec:finite-nonbr-simple}
 
 
 Let's start straight away with the simplest instance, finite
-nonbranching simple session types, to convey the
+non-branching simple session types, to convey the
 gist of the approach. Subsequent sections show how to add most of the
 usual features of session types.
 
@@ -1142,7 +1142,6 @@ Likewise, the interpreter {\Aexec} is an easy exercise.
 
 \multiExec
 
-\newpage
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1155,7 +1154,7 @@ Likewise, the interpreter {\Aexec} is an easy exercise.
 % monadic implementation of the interpreter is worthwhile and improves
 % conciseness and readability, it is not clear whether there is a
 % significant difference for the callbacks themselves.
-% To be fair, the choice to revert to the nonmonadic interface in
+% To be fair, the choice to revert to the non-monadic interface in
 % Section~\ref{sec:context-free-session} was partially forced on us by
 % some restrictions on level polymorphism in the implementation of indexed functors in
 % the standard library.
@@ -1352,7 +1351,7 @@ Mungo \cite{DBLP:journals/scp/KouzapasDPG18} and Bica
 \cite{DBLP:journals/corr/abs-1205-5344} use similar ideas to implement
 typestate and sessions.
 
-Hu and Yoshida \cite{DBLP:conf/fase/HuY16} pioneered code genereating
+Hu and Yoshida \cite{DBLP:conf/fase/HuY16} pioneered code generating
 approaches for implementing multiparty session types. They generate protocol-specific
 endpoint APIs from multiparty session  
 types for Java, but claim generality of their approach for mainstream
@@ -1392,7 +1391,7 @@ get to the level needed for sessions: having an affine session type
 for a channel means that an agent can drop the connection anytime
 without finishing the protocol, which leads to deadlock at the other
 end of the connection. With a proper linear session type, every agent has to
-fulfill the protocol up to the closing of the connection.
+fulfil the protocol up to the closing of the connection.
 
 % \cite{DBLP:conf/ecoop/ChenBT22}
 % \cite{DBLP:conf/ecoop/LagaillardieNY22}

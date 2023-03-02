@@ -8,7 +8,7 @@ open import Data.Nat.Properties using (+-suc)
 open import Data.Integer using (ℤ)
 open import Data.Fin using (Fin; suc; zero; _≟_)
 open import Data.Fin.Subset using (Subset)
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂)
+open import Data.Product using (_×_; Σ; proj₁; proj₂) renaming ( _,_ to ⟨_,_⟩)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Vec using (Vec; [] ; _∷_; lookup; remove; updateAt)
 
@@ -37,16 +37,16 @@ data Split : ℕ → ℕ → Set where
   right : Split m n → Split m (suc n)
 
 apply-split : Split m n → Vec A (m + n) → Vec A m × Vec A n
-apply-split null [] = [] , []
+apply-split null [] = ⟨ [] , [] ⟩
 apply-split (left sp) (x ∷ v)
   with apply-split sp v
-... | vl , vr = x ∷ vl , vr
+... | ⟨ vl , vr ⟩ = ⟨ x ∷ vl , vr ⟩
 apply-split{m}{suc n} (right sp) v
   rewrite +-suc m n
   with v
 ... | x ∷ v
   with apply-split sp v
-... | vl , vr = vl , x ∷ vr
+... | ⟨ vl , vr ⟩ = ⟨ vl , x ∷ vr ⟩
 
 locate-split : Split m n → Fin (m + n) → Fin m ⊎ Fin n
 locate-split (left sp) zero = inj₁ zero
@@ -261,23 +261,23 @@ exec (RECVCH c cmd) state chns = do
   ch ← primRecv (lookup chns c)
   exec cmd state (ch ∷ chns)
 exec (CONNECT _ split split-ch cmds₁ cmds₂) state chns =
-  let (state₁ , state₂) = split state in
-  let (chns₁ , chns₂) = apply-split split-ch chns in
-  newChan >>= λ (ch₁ , ch₂) →
+  let ⟨ state₁ , state₂ ⟩ = split state in
+  let ⟨ chns₁ , chns₂ ⟩ = apply-split split-ch chns in
+  newChan >>= λ{ ⟨ ch₁ , ch₂ ⟩ →
   forkIO (exec cmds₁ state₁ (ch₁ ∷ chns₁)) >>
-  exec cmds₂ state₂ (ch₂ ∷ chns₂)
+  exec cmds₂ state₂ (ch₂ ∷ chns₂) }
 exec (CLOSE c gend cmd) state chns = do
   primClose (lookup chns c)
   exec cmd (gend state) (remove chns c)
 exec (SEND c getx cmds) state chns =
-  let (x , state′) = getx state in
+  let ⟨ x , state′ ⟩ = getx state in
   primSend (lookup chns c) x >> exec cmds state′ chns
 exec (RECV c putx cmds) state chns =
   primRecv (lookup chns c) >>= λ x →
   let state′ = putx x state in
   exec cmds state′ chns
 exec (SELECT c _ getx cmds₁ cmds₂) state chns = do
-  let b , a = getx state
+  let ⟨ b , a ⟩ = getx state
   primSend (lookup chns c) b
   if b then (exec cmds₁ a chns)
        else (exec cmds₂ a chns)

@@ -90,7 +90,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Intrisically Typed Sessions Without Linearity}
+\title{Intrisically Typed Sessions With Callbacks}
 %\title{How to Embed Session Types Without Linearity}
 \subtitle{Functional Pearl}
 
@@ -128,27 +128,28 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-  All formalizations of session types rely on linear types for soundness as
-  session-typed communication channels must change their type at every
-  operation. Embedded language implementations of session types follow
-  suit. They either rely on clever typing constructions to guarantee
-  linearity statically, or on run-time checks that approximate
-  linearity.
+All formalizations of session types rely on linear types for soundness as
+session-typed communication channels must change their type at every
+operation. Embedded language implementations of session types follow
+suit. They either rely on clever typing constructions to guarantee
+linearity statically, or on run-time checks that approximate
+linearity.
 
-  We present a new language embedded implementation of session types,
-  which is inspired by the inversion of control design principle. With
-  our approach, all application programs are intrinsically session typed and
-  unable to break linearity by construction. Linearity remains a proof
-  obligation for a tiny encapsulated
-  interpreter that can be discharged once and for all when the library
-  is built.
+We present a new language embedded implementation of session types,
+which is inspired by the inversion of control design principle. With
+our approach, all application programs are intrinsically session typed and
+unable to break linearity by construction. Linearity remains a proof
+obligation for a tiny encapsulated library that can be discharged
+once and for all when the library is built.
 
-  We demonstrate that our proposed design extends to a wide range of
-  features of session type systems: branching, recursion, multichannel
-  and higher-order session, as well as context-free sessions.
+We demonstrate that our proposed design extends to a wide range of
+features of session type systems: branching, recursion, multichannel
+and higher-order session, as well as context-free sessions. The
+multichannel extension provides an embedded implementation of
+session types which guarantees deadlock freedom by construction.
 
-  The development reported in this paper is fully backed by
-  typechecked Agda code.
+The development reported in this paper is fully backed by
+typechecked Agda code.
 \end{abstract}
 
 %%
@@ -382,20 +383,22 @@ the channel \texttt{c2} is closed, it cannot be closed again.
   session type constructions: branching
   (Section~\ref{sec:select-choice}), recursion
   (Section~\ref{sec:going-circles}), multichannel and
-  higher-order sessions (Section~\ref{sec:handl-mult-chann}). 
+  higher-order sessions (Section~\ref{sec:handl-mult-chann}). In
+  Section~\ref{sec:what-about-client} we offer a novel and significant
+  improvement of the API-based treatment of recursion.
 \item The extension to operate on multiple channels is significant and
   mostly orthogonal to the other features. Our approach is inspired by
   Wadler's GV calculus \cite{DBLP:journals/jfp/Wadler14} and thus
-  yields deadlock free programs by construction. 
-  It also requires several elements of multiparty session types.
+  yields deadlock-free programs by construction. 
+  % It also requires several elements of multiparty session types.
 \item We propose a new dynamic selection operation in the context of
   branching session types (Section~\ref{sec:select-choice}).
 \item We extend the callback approach to context-free session types
   (with branching and recursion), which in turn requires a more
   sophisticated, dependently-typed encoding of commands than regular
   session types (Section~\ref{sec:context-free-session}).
-\item All our session type systems inherit the polymorphism from their
-  host language, Agda.
+% \item All our session type systems inherit the polymorphism from their
+%   host language, Agda.
 \item For monad lovers Section~\ref{sec:going-monadic} describes a
   version with a monadic encoding of callbacks. 
 \end{itemize}
@@ -409,6 +412,11 @@ channels. This API can be implemented in Haskell using Agda's foreign
 function interface.\footnote{An as-yet unfinished programming exercise
   that we plan to complete for artifact submission.}
 
+As a functional pearl, this paper concentrates on the library design, it contains no
+formal proofs of the proof obligations on the library interpreter
+(i.e., linearity and freedom of deadlock for the multichannel
+case). The discussion in Section~\ref{sec:discussion} contains some
+suggestions how this task may be approached.
 
 Working knowledge of Agda is not a hard requirement for understanding the
 paper. We strive to make the code accessible to readers who are
@@ -1100,10 +1108,13 @@ can be concluded using the type {\ACterminate}.
 The type {\ACconnect} indicates creation of a new thread which runs protocol $M_1$
 whereas the current thread continues with $M_2$. The currently open
 channels are distributed among the threads according to the {\ASplit}
-parameter. Communication with the new thread is established by
+parameter.
+Communication with the new thread is established by 
 creating a new channel, which is mapped to address {\Azero} in both
 threads. Moreover, the {\ACheckDual} predicate makes sure that the
-session types of the two ends of this channel are dual to one another.
+session types of the two ends of this channel are dual to one
+another.\footnote{We elide details about the {\ASplit} type as well as
+  duality from the paper for space reasons. See the supplement.}
 
 The delegation types deal with sending (receiving) a channel over
 another channel. Their types are sufficiently different so as not to
@@ -1179,6 +1190,11 @@ program analysis
 Here is an excerpt of such an implementation derived from the
 interpreter in Section~\ref{sec:finite-nonbr-simple}.
 \stCombinators
+The interpreters from other sections can be rephrased analogously
+without sacrificing the advantages our approach. However, for program
+development the command-based approach is more attractive because the
+Agda interactive programming support features autocompletion for commands, but not
+for combinators.
 
 \subsection{Multiparty session types}
 \label{sec:mult-sess-types}
@@ -1187,12 +1203,12 @@ We see no issues in extending the approach presented in this work to
 protocols with more than two participants. We refrained from doing so
 in this work to avoid the extra
 complication. Section~\ref{sec:handl-mult-chann} already gives some
-insight into the requirements for a multiparty version.
+insight into the requirements for a full multiparty version.
 
 \subsection{Verification}
 \label{sec:verification}
 
-The fly in the ointment of our approach is the proof obligation that
+A fly in the ointment of our approach is the proof obligation that
 the interpreter does not break linearity. As the interpreters are very
 simple, it is tempting to rely on manual inspection.
 
@@ -1209,13 +1225,33 @@ representing about recursive and impure programs and  reasoning about them.
 \label{sec:related-work}
 
 In this section, we review how different library implementations of
-session types deal with linearity. Several implementations perform
-linearity checks at run time. While a check for at most one (affine)
-use of a resource can be performed with a single bit \cite{DBLP:conf/esop/TovP10}, we
-are not aware of a reliable check for linearity.
+session types deal with linearity. Specifically, we do not consider
+dedicated language implementations like
+SILL \cite{DBLP:conf/esop/ToninhoCP13},
+SEPI \cite{DBLP:conf/sefm/FrancoV13},
+FreeST \cite{DBLP:journals/iandc/AlmeidaMTV22},
+or Links \cite{lindley17:_light_funct_session_types}. These
+implementations come with dedicated type checker that properly treat
+linearity at compile time.
 
-Several implementations statically enforce linearity by encoding it
-using polymorphism \cite{DBLP:journals/scp/ImaiYY19} or higher-order
+There are libraries with fully dynamic enforcement of a session type
+discipline
+\cite{DBLP:conf/rv/HuNYDH13,DBLP:journals/pacmpl/MelgrattiP17}. They
+suffer from run-time overhead as they have to check every
+communication operation and they lack guarantees as they terminate the
+protocol when an error is detected at some peer. 
+
+Several libraries perform
+linearity checks at run time. While a check for at most one (affine)
+use of a resource can be performed with a single bit
+\cite{DBLP:conf/esop/TovP10},  checks for linearity are more
+expensive, but still deemed lightweight
+\cite{DBLP:conf/fase/HuY16}.
+
+Several libraries statically enforce linearity by encoding it
+using parameterized monads
+\cite{SackmanE08,DBLP:conf/haskell/PucellaT08},  polymorphism
+\cite{DBLP:journals/scp/ImaiYY19}, or higher-order 
 abstract syntax \cite{DBLP:conf/haskell/LindleyM16}. While these
 encodings cleverly exploit the facilities of the host language and
 support type inference, they
@@ -1230,13 +1266,24 @@ of label-dependent session types
 \cite{DBLP:journals/pacmpl/ThiemannV20}, so that our  approach
 implements part of that theory, too.
 
-%% dynamic selection -> label-dependent session types
+While the dynamic and object-oriented libraries support session
+subtyping, our approach currently does not support subtyping. 
 
-%% unclassified
 
-\cite{DBLP:conf/fase/HuY16} (dynamic check)
+The most closely related work is by Miu, Ferreira, Yoshida, and Zhou
+\cite{DBLP:conf/cc/Miu0Y021}. They develop an
+implementation of multiparty session types in TypeScript by generation
+of custom libraries from a protocol specification. Their
+implementation guarantees freedom from
+communication errors, including deadlocks, communication
+mismatches, channel usage violation or cancellation errors. They
+generate TypeScript APIs in callback style, where the finite state
+machine underlying the communication endpoints is reified in terms of
+interfaces. Sending and receiving are both encoded via callbacks 
+into the library or into the user program, as appropriate. The
+generated APIs encapsulate all primitive communication operations.
 
-\cite{DBLP:conf/fase/HuY17} (dynamic check)
+
 
 \subsection{Haskell}
 \label{sec:hask-impl}
@@ -1247,8 +1294,8 @@ types. Duality is implemented using type classes with functional
 dependencies. Linearity is not considered.
 
 Sackman \cite{SackmanE08} and Tov \cite{DBLP:conf/popl/TovP11} model
-multiple channels using a monad that is indexed by a mapping
-from channel ids to their current session types. The mapping changes
+multiple channels using a parameterized monad that is indexed by a mapping
+from channel names to their current session types. The mapping changes
 with each operation to keep track of the current state of all
 channels. The monadic interface guarantees linearity.
 
@@ -1267,7 +1314,10 @@ functions in a type class with implementations provided subsequently.
 
 Orchard and Yoshida \cite{DBLP:conf/popl/OrchardY16} discuss
 connections between session types and effect systems. They present an
-implementation of session types in Haskell via an effect system encoding.
+implementation of session types in Haskell via an effect system
+encoding based on graded monads. Here the ``grading'' keeps track of
+the currently active channels and their session types whereas the
+monadic structure provides proper sequencing.
 
 
 \subsection{OCaml}
@@ -1275,7 +1325,7 @@ implementation of session types in Haskell via an effect system encoding.
 
 The implementation of FuSe \cite{DBLP:journals/jfp/Padovani17}
 consists of a typed layer on top of untyped channels (just like our
-approach).  It presents an API inspired by GV to the user, supports
+approach).  It provides an API inspired by GV, supports
 type inference, and checks linearity at run time. The approach is
 extensible to context-free session types
 \cite{DBLP:journals/toplas/Padovani19} at the expense of some user
@@ -1283,34 +1333,58 @@ annotations (while keeping type inference).
 
 Session OCaml \cite{DBLP:journals/scp/ImaiYY19} enforces linearity by
 parametric polymorphism based on a technique by
-Garrigue\footnote{Available at
-  \url{https://github.com/garrigue/safeio}.}, but significantly
-extended to deal with session types.
+Garrigue\footnote{See \url{https://github.com/garrigue/safeio}.} with significant
+extensions to deal with session types.
 It can handle a fixed number of channels at the same time with
 globally defined channel names (slot names). The technique hinges on
 the polymorphic types of the global slot names.
-Session types are inferred from programs that written in a notation
+Session types are inferred from programs that can be written in a notation
 similar to FuSe and GV.
 
 
 \subsection{Java}
 \label{sec:java}
 
-Session-based distributed programming in Java
-\cite{DBLP:conf/ecoop/HuYH08} (special syntax for session
-communication)
+The early interface proposed in ``Session-based distributed programming in Java''
+\cite{DBLP:conf/ecoop/HuYH08} relied on special syntax for session
+communication and a preprocessor to limit aliasing.
+Mungo \cite{DBLP:journals/scp/KouzapasDPG18} and Bica
+\cite{DBLP:journals/corr/abs-1205-5344} use similar ideas to implement
+typestate and sessions.
 
-\subsection{Scala}
-\label{sec:scala}
+Hu and Yoshida \cite{DBLP:conf/fase/HuY16} pioneered code genereating
+approaches for implementing multiparty session types. They generate protocol-specific
+endpoint APIs from multiparty session  
+types for Java, but claim generality of their approach for mainstream
+languages. They start from the observation that the behavior of an
+endpoint of a communication can be represented by a finite state
+machine. Each of these states is reified as a state channel type with
+methods that imply communication operations corresponding to state
+transitions. As Java places no restrictions on object uses, they
+deploy ``very light run-time checks in the 
+generated API that enforce a linear usage discipline on instances of
+the channel types.'' Their abstract I/O state interfaces are closest
+to the facilities that we provide.
 
-\cite{DBLP:conf/ecoop/ScalasY16} (socaml: checks linearity at run time)
+While their approach reifies the different possible states of a
+communication endpoint, these states are implicit in our
+approach. Moreover, while an API based on finite state machines is
+entirely appropriate for servers, we can provide additional
+flexibility for implementing clients of recursive protocols though
+commands like {\AUNROLL} described in
+Section~\ref{sec:what-about-client}.
+
+Scalas work for Scala \cite{DBLP:conf/ecoop/ScalasY16} follows similar
+ideas with run-time checks for linearity. More recent work
+\cite{DBLP:conf/ecoop/CledouEJP22} improves on the flexibility by
+relying on advanced typing features in Scala~3.
 
 \subsection{Rust}
 \label{sec:rust}
 
 
 
-Several recent implementations of session types rely on Rust, a
+Several recent implementations of session types \cite{DBLP:conf/ecoop/ChenBT22,DBLP:conf/ecoop/LagaillardieNY22,DBLP:conf/ppopp/CutnerYV22,DBLP:conf/coordination/CutnerY21,DBLP:conf/coordination/LagaillardieNY20,DBLP:journals/corr/abs-1909-05970,DBLP:conf/icfp/JespersenML15} rely on Rust, a
 language with uniqueness types and ownership, all checked at compile
 time. While uniqueness types are quite similar to affine types
 (describing values that can be used at most once), they do not quite
@@ -1320,18 +1394,36 @@ without finishing the protocol, which leads to deadlock at the other
 end of the connection. With a proper linear session type, every agent has to
 fulfill the protocol up to the closing of the connection.
 
-\cite{DBLP:conf/ecoop/ChenBT22}
-\cite{DBLP:conf/ecoop/LagaillardieNY22}
-\cite{DBLP:conf/ppopp/CutnerYV22}
-\cite{DBLP:conf/coordination/CutnerY21}
-\cite{DBLP:conf/coordination/LagaillardieNY20}
-\cite{DBLP:journals/corr/abs-1909-05970}
-\cite{DBLP:conf/icfp/JespersenML15}
+% \cite{DBLP:conf/ecoop/ChenBT22}
+% \cite{DBLP:conf/ecoop/LagaillardieNY22}
+% \cite{DBLP:conf/ppopp/CutnerYV22}
+% \cite{DBLP:conf/coordination/CutnerY21}
+% \cite{DBLP:conf/coordination/LagaillardieNY20}
+% \cite{DBLP:journals/corr/abs-1909-05970}
+% \cite{DBLP:conf/icfp/JespersenML15}
 
 \section{Conclusions}
 \label{sec:conclusions}
 
+Our paper demonstrates that a callback-based approach to
+implementation session-typed programs is a perfect fit with (mildly)
+dependently-typed functional programming. The intrinsically
+session-typed way of writing program guarantees protocol fidelity and,
+in some instances, deadlock freedom 
+by construction. In connection with the callback approach, the host
+language does not have to support linearity, so that programs are
+statically safe, once the encapsulated library is verified.
 
+Interestingly, the changed angle of attack revealed the possibility of
+and the need for two novel constructions, the dynamic selection and
+the {\AUNROLL} command for recursive sessions. The first one is
+facilitated by our dependently-typed host language. The second one
+arose from the need to write client programs for recursive protocols. 
+
+The discussion in Section~\ref{sec:discussion} contains several
+pointers for future work. It would also be interesting to investigate
+ways to integrate subtyping (an obvious one being the insistence on
+explicit coercions).
 
 %%
 %% The acknowledgments section is defined using the "acks" environment

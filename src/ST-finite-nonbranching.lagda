@@ -233,6 +233,39 @@ record Accepting A S : Set where
 acceptor : Accepting A S → A → IO A
 acceptor (ACC cmd) a = primAccept >>= exec cmd a
 \end{code}}
+\newcommand\stCombinators{%
+\begin{code}
+XCmd : Set → Session → Set₁
+XCmd A s = A → Channel → IO A
+
+xclose : XCmd A end
+xclose state ch = do
+  primClose ch
+  pure state
+
+xsend : (A → A × T⟦ T ⟧) → XCmd A S → XCmd A (‼ T ∙ S)
+xsend f xcmd = λ state ch → do
+  let ⟨ state′ , x ⟩ = f state
+  primSend x ch
+  xcmd state′ ch
+\end{code}}
+\begin{code}[hide]
+xrecv : (T⟦ T ⟧ → A → A) → XCmd A S → XCmd A (⁇ T ∙ S)
+xrecv f xcmd = λ state ch → do
+  x ← primRecv ch
+  let state′ = f x state
+  xcmd state′ ch 
+
+xselect : ∀ {Si} → (i : Fin k) → XCmd A (Si i) → XCmd A (⊕′ Si)
+xselect i xcmd = λ state ch → do
+  primSend i ch
+  xcmd state ch
+
+xchoice : ∀ {Si} → ((i : Fin k) → XCmd A (Si i)) → XCmd A (&′ Si)
+xchoice f-xcont = λ state ch → do
+  x ← primRecv ch
+  f-xcont x state ch
+\end{code}
 \begin{code}[hide]
 ----------------------------------------------------------------------
 -- a Σ type isomorphic to A₁ ⊎ A₂

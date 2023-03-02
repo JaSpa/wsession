@@ -384,9 +384,10 @@ the channel \texttt{c2} is closed, it cannot be closed again.
   (Section~\ref{sec:going-circles}), multichannel and
   higher-order sessions (Section~\ref{sec:handl-mult-chann}). 
 \item The extension to operate on multiple channels is significant and
-  mostly orthogonal to the other features. Our approach to
-  multichannel sessions requires
-  several elements of multiparty session types.
+  mostly orthogonal to the other features. Our approach is inspired by
+  Wadler's GV calculus \cite{DBLP:journals/jfp/Wadler14} and thus
+  yields deadlock free programs by construction. 
+  It also requires several elements of multiparty session types.
 \item We propose a new dynamic selection operation in the context of
   branching session types (Section~\ref{sec:select-choice}).
 \item We extend the callback approach to context-free session types
@@ -1067,31 +1068,36 @@ restrictions very similar to multiparty session types \cite{DBLP:journals/jacm/H
 \multiMSesson
 
 A multichannel session type {\AMSession~n}, ranged over by $M$, is indexed by the number $n$ of
-channels that it governs. The names of the channels are represented by
+channels that it governs. Multichannel session types are loosely based on Wadler's GV
+calculus \cite{DBLP:journals/jfp/Wadler14}. In particular, the
+connection topology of multichannel programs is restricted in the same
+way as in Wadler's GV, with the pleasing
+consequence that they are guaranteed to be free of deadlocks.
+
+The names of the channels are represented by
 de Bruijn indices. Unlike in other embedded implementations, a
 multichannel type covers the full choreography of a communicating
-application: forking a new process is combined with channel creation
-\cite{where?}, branching and transmitting values as usual, closing a
+application: connecting (forking) to a new process is combined with channel creation, branching and transmitting values as usual, closing a
 channel, delegation, and terminating the application after all
 protocols are finished and their respective channels closed.
 
-Each command, except {\ACfork} and {\ACterminate}, takes a parameter
+Each multichannel type, except {\ACconnect} and {\ACterminate}, takes a parameter
 $c$ that identifies the channel on which the command operates. 
-The command to transmit a value (\ACtransmit) is as before, save the
+The type to transmit a value (\ACtransmit) is as before, save the
 direction and channel parameters. Branching (\ACbranch) is as before
-except the extra function {\ACheck}: it ensures that a branch is
+except the extra function {\ACausality}: it ensures that a branch is
 reasonable by enforcing that the session on every channel except $c$
 is not affected by the branch. This restriction is called
 ``Causality'' in the context of multiparty session types. It is needed
 because only the party on other end of channel $c$ knows about the
 branching, but the others do not.
 
-The {\ACclose} command has a continuation parameter because a channel
+The {\ACclose} type has a continuation parameter because a channel
 can be closed in the middle of a choreography without terminating the
 multichannel protocol. Once all channels are closed, the choreography
-can be concluded using the {\ACterminate} command.
+can be concluded using the type {\ACterminate}.
 
-The {\ACfork} command creates a new thread which runs protocol $M_1$
+The type {\ACconnect} indicates creation of a new thread which runs protocol $M_1$
 whereas the current thread continues with $M_2$. The currently open
 channels are distributed among the threads according to the {\ASplit}
 parameter. Communication with the new thread is established by
@@ -1099,26 +1105,25 @@ creating a new channel, which is mapped to address {\Azero} in both
 threads. Moreover, the {\ACheckDual} predicate makes sure that the
 session types of the two ends of this channel are dual to one another.
 
-The delegation commands deal with sending (receiving) a channel over
+The delegation types deal with sending (receiving) a channel over
 another channel. Their types are sufficiently different so as not to
 factor out the direction. To send a channel $j$ using {\ACdelegateOUT}, we need to know that
-it is not the same channel we are sending on, its simple session type,
+the transmitted channel is not the same channel we are sending on, its simple session type,
 and that the continuation command has one fewer channel.
 To receive a channel using {\ACdelegateIN} we just map it to address
-{\Azero} in the continuation command.
+{\Azero} in the continuation session.
 
 The function {\Aproject} is similar to the projection from global
 types to local types in multiparty session types. We make use of
 auxiliary functions that manipulate de Bruijn indices:
 {\AlocateSplit~sp-c~c} determines the target thread of channel $c$ and
 its local index; {\Aadjust} changes the index to account for a channel
-that is removed from choreography. {\ACheck} and {\ACheckDual} are
+that is removed from choreography. {\ACausality} and {\ACheckDual} are
 implemented using the obvious formulas.
 \multiProjection
 
 Given the preceding discussion as well as the discussion in previous
-sections, the types of commands should
-straightforward.
+sections, the types of commands follow directly.
 
 \multiCmd
 
@@ -1149,27 +1154,31 @@ Likewise, the interpreter {\Aexec} is an easy exercise.
 
 The reader may wonder why we do not define the constructors for
 selection and choice using vectors of length $n$, rather than
-functions from $\AFin~n$ (which is isomorphic). Using function extends
-straightforwardly to the definition of {\ACommand} where the {\ASession} index of the
+functions from $\AFin~n \to \ASession$ (which is isomorphic). Using a function extends
+directly to the definition of the {\ACommand} type where the {\ASession} index of the
 continuation command depends on the function argument $i : \AFin~n$.
-We would have to define a special vectors type to achieve similar
+We would have to define a special dependent vector type to achieve similar
 expressivity. 
 
-\subsection{Code generation}
+\subsection{Alternative representations}
 \label{sec:code-generation}
 
 Instead of interpreting a command value, we could compile it to a
 custom library, following the lead of the related work
 \cite{DBLP:journals/pacmpl/00020HNY20,DBLP:conf/cc/Miu0Y021}.
-We leave such a compiler to future work.
+Such a compiler can be obtained specializing the command interpreter
+with respect to single commands.
 
-Alternatively, one might create a library implementation that exposes
+The resulting \emph{denotational implementation} corresponds to a library implementation that exposes
 the commands, which are reified in a datatype in our approach, as
 functions. This approach has been pioneered by Reynolds \cite{Reynolds1994} and
 subsequently applied, e.g., in the context of partial evaluation and
-program analysis \cite{DBLP:journals/jfp/Thiemann99,DBLP:journals/jfp/CaretteKS09}.
+program analysis
+\cite{DBLP:journals/jfp/Thiemann99,DBLP:journals/jfp/CaretteKS09}.
 
-
+Here is an excerpt of such an implementation derived from the
+interpreter in Section~\ref{sec:finite-nonbr-simple}.
+\stCombinators
 
 \subsection{Multiparty session types}
 \label{sec:mult-sess-types}
@@ -1179,6 +1188,22 @@ protocols with more than two participants. We refrained from doing so
 in this work to avoid the extra
 complication. Section~\ref{sec:handl-mult-chann} already gives some
 insight into the requirements for a multiparty version.
+
+\subsection{Verification}
+\label{sec:verification}
+
+The fly in the ointment of our approach is the proof obligation that
+the interpreter does not break linearity. As the interpreters are very
+simple, it is tempting to rely on manual inspection.
+
+To obtain a formal and possible mechanized proof, we envision a
+semantics in terms of a free monad
+\cite{DBLP:journals/jfp/Swierstra08,DBLP:conf/haskell/KiselyovI15}
+with uninterpreted occurrences of 
+the operations of our primitive channel IO API. The actual proof might be
+conducted using interaction trees
+\cite{DBLP:journals/pacmpl/XiaZHHMPZ20}, a mechanized framework for
+representing about recursive and impure programs and  reasoning about them.
 
 \section{Related work}
 \label{sec:related-work}

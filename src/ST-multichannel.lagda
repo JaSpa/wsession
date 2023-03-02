@@ -84,16 +84,16 @@ data Session : Set where
 data MSession : ℕ → Set
 variable M M₁ M₂ : MSession n
 
-Check : Fin n → MSession n → MSession n → Set
+Causality : Fin n → MSession n → MSession n → Set
 CheckDual0 : MSession (suc m) → MSession (suc n) → Set
 
 data MSession where
   transmit : (d : Direction) → (c : Fin n) → (T : Type) → MSession n → MSession n
   branch   : (d : Direction) → (c : Fin n) → (M₁ : MSession n) → (M₂ : MSession n)
-    → Check c M₁ M₂ → MSession n
+    → Causality c M₁ M₂ → MSession n
   close : (c : Fin (suc n)) → MSession n → MSession (suc n)
   terminate : MSession zero
-  fork : Split m n → (M₁ : MSession (suc m)) → (M₂ : MSession (suc n))
+  connect : Split m n → (M₁ : MSession (suc m)) → (M₂ : MSession (suc n))
     → CheckDual0 M₁ M₂ → MSession (m + n)
   -- assume new channel has address zero in both threads
   delegateOUT : (c j : Fin (suc n)) → c ≢ j → Session → MSession n → MSession (suc n)
@@ -188,11 +188,11 @@ is-dual→dual end end isd-s₁-s₂ = refl
 \newcommand\multiProjection{%
 \begin{code}
 project : Fin n → MSession n → Session
-project c (fork sp-c M₁ M₂ _) with locate-split sp-c c
+project c (connect sp-c M₁ M₂ _) with locate-split sp-c c
 ... | inj₁ x = project (suc x) M₁
 ... | inj₂ y = project (suc y) M₂
-project c (branch d x M₁ M₂ check) with c ≟ x
-... | no c≢x = project c M₁  -- we have (check c c≢x : project c M₁ ≡ project c M₂)
+project c (branch d x M₁ M₂ causal) with c ≟ x
+... | no c≢x = project c M₁  -- we have (causal c c≢x : project c M₁ ≡ project c M₂)
 ... | yes refl = branch d (project c M₁) (project c M₂)
 project c (transmit d x t M) with c ≟ x
 ... | no c≢x = project c M
@@ -209,7 +209,7 @@ project c (delegateIN x M) with c ≟ x
 ... | yes refl = delegate INP (project zero M) (project (suc c) M)
 ... | no c≢x = project (suc c) M
 
-Check {n} i M₁ M₂ = ∀ (j : Fin n) → j ≢ i → project j M₁ ≡ project j M₂
+Causality {n} i M₁ M₂ = ∀ (j : Fin n) → j ≢ i → project j M₁ ≡ project j M₂
 CheckDual0 M₁ M₂ = project zero M₁ ≡ dual (project zero M₂)
 \end{code}}
 \begin{code}[hide]
@@ -228,16 +228,17 @@ data Cmd (A : Set) : (n : ℕ) → MSession n → Set₁ where
   CLOSE  : ∀ c → (A → A) → Cmd A n M → Cmd A (suc n) (close c M)
   SEND   : ∀ c → (A → T⟦ T ⟧ × A) → Cmd A n M → Cmd A n (send c T M)
   RECV   : ∀ c → (T⟦ T ⟧ → A → A) → Cmd A n M → Cmd A n (recv c T M)
-  SELECT : ∀ c → {check : Check c M₁ M₂} → (A → Bool × A)
-    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (select c M₁ M₂ check)
-  CHOICE : ∀ c → {check : Check c M₁ M₂}
-    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (choice c M₁ M₂ check)
-  FORK   : ∀ {M₁ : MSession (suc m)} {M₂ : MSession (suc n)} {check : CheckDual0 M₁ M₂}
+  SELECT : ∀ c → (causal : Causality c M₁ M₂) → (A → Bool × A)
+    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (select c M₁ M₂ causal)
+  CHOICE : ∀ c → (causal : Causality c M₁ M₂)
+    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (choice c M₁ M₂ causal)
+  CONNECT : ∀ {M₁ : MSession (suc m)} {M₂ : MSession (suc n)} (check : CheckDual0 M₁ M₂)
     → (split : A → A × A)
     → (sp : Split m n)
     → Cmd A (suc m) M₁ → Cmd A (suc n) M₂
-    → Cmd A (m + n) (fork sp M₁ M₂ check)
-  SENDCH : ∀ {sj} → ∀ c j → (c≢j : c ≢ j) → Cmd A n M → Cmd A (suc n) (delegateOUT c j c≢j sj M)
+    → Cmd A (m + n) (connect sp M₁ M₂ check)
+  SENDCH : ∀ {sj} → ∀ c j → (c≢j : c ≢ j)
+    → Cmd A n M → Cmd A (suc n) (delegateOUT c j c≢j sj M)
   RECVCH : ∀ c → Cmd A (suc n) M → Cmd A n (delegateIN c M)
   END    : Cmd A 0 terminate
 \end{code}}
@@ -259,7 +260,7 @@ exec (SENDCH c j f≢j cmd) state chns = do
 exec (RECVCH c cmd) state chns = do
   ch ← primRecv (lookup chns c)
   exec cmd state (ch ∷ chns)
-exec (FORK split split-ch cmds₁ cmds₂) state chns =
+exec (CONNECT _ split split-ch cmds₁ cmds₂) state chns =
   let (state₁ , state₂) = split state in
   let (chns₁ , chns₂) = apply-split split-ch chns in
   newChan >>= λ (ch₁ , ch₂) →
@@ -275,12 +276,12 @@ exec (RECV c putx cmds) state chns =
   primRecv (lookup chns c) >>= λ x →
   let state′ = putx x state in
   exec cmds state′ chns
-exec (SELECT c getx cmds₁ cmds₂) state chns = do
+exec (SELECT c _ getx cmds₁ cmds₂) state chns = do
   let b , a = getx state
   primSend (lookup chns c) b
   if b then (exec cmds₁ a chns)
        else (exec cmds₂ a chns)
-exec (CHOICE c cmd₁ cmd₂) state chns = do
+exec (CHOICE c _ cmd₁ cmd₂) state chns = do
   b ← primRecv (lookup chns c)
   if b then exec cmd₁ state chns
        else exec cmd₂ state chns

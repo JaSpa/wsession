@@ -1,5 +1,7 @@
+*.hi
+*.o
 *.agdai
-MAlonzo/**
+MAlonzo/
 auto/
 latex/
 *.aux

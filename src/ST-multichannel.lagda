@@ -1,6 +1,7 @@
 \begin{code}[hide]
 {-# OPTIONS --guardedness #-} {- for IO -}
 module ST-multichannel where
+{-# FOREIGN GHC import qualified Control.Concurrent.UntypedChannel as UC #-}
 
 open import Data.Bool using (Bool; true; false;if_then_else_)
 open import Data.Nat using (ℕ; suc; zero; _+_)
@@ -22,7 +23,15 @@ open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; resp₂)
 
-open import IO
+-- make the compiler happy
+
+open import IO.Primitive
+
+_>>_ : ∀ {a b} {A : Set a} {B : Set b} → IO A → IO B → IO B
+ioa >> iob = ioa >>= λ a → iob
+
+
+-- end compiler support
 
 variable
   m n o : ℕ
@@ -244,12 +253,26 @@ data Cmd (A : Set) : (n : ℕ) → MSession n → Set₁ where
 \end{code}}
 \begin{code}[hide]
 postulate
-  Channel : Set
+  Channel  : Set
   primSend : Channel → A → IO ⊤
   primRecv : Channel → IO A
   primClose : Channel → IO ⊤
-  forkIO   : IO A → IO ⊤
-  newChan  : IO (Channel × Channel)
+  primFork : IO ⊤ → IO ⊤
+
+data CPair : Set where
+  ⟨_,_⟩ : Channel → Channel → CPair
+{-# COMPILE GHC CPair = data UC.CPair (UC.CPair) #-}
+
+postulate
+  newChan  : IO CPair
+\end{code}
+\begin{code}[hide]
+{-# COMPILE GHC Channel = type UC.Channel #-}
+{-# COMPILE GHC primSend = \ _ -> UC.primSend #-}
+{-# COMPILE GHC primRecv = \ _ -> UC.primRecv #-}
+{-# COMPILE GHC primClose = UC.primClose #-}
+{-# COMPILE GHC primFork = UC.primFork #-}
+{-# COMPILE GHC newChan = UC.newChan #-}
 \end{code}
 \newcommand\multiExec{%
 \begin{code}
@@ -264,7 +287,7 @@ exec (CONNECT _ split split-ch cmds₁ cmds₂) state chns =
   let ⟨ state₁ , state₂ ⟩ = split state in
   let ⟨ chns₁ , chns₂ ⟩ = apply-split split-ch chns in
   newChan >>= λ{ ⟨ ch₁ , ch₂ ⟩ →
-  forkIO (exec cmds₁ state₁ (ch₁ ∷ chns₁)) >>
+  primFork (exec cmds₁ state₁ (ch₁ ∷ chns₁) >> pure tt) >>
   exec cmds₂ state₂ (ch₂ ∷ chns₂) }
 exec (CLOSE c gend cmd) state chns = do
   primClose (lookup chns c)

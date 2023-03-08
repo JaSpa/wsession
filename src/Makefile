@@ -22,3 +22,8 @@ $(ARXIVGOAL): $(GOAL).tex $(GOAL).bbl $(TARGET_FILES) acmart.cls agda.sty ACM-Re
 
 .PHONY: all
 all: $(GOAL).pdf $(ZIPGOAL)
+
+### executables
+
+EX-multichannel: EX-multichannel.lagda
+	agda --compile $^

@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import IO.Base using (IO)
 
-open import Channels
+open import Data.Unit.Polymorphic.Base using (⊤; tt)
+open import Channels IO ⊤
 
 open import Utils
 

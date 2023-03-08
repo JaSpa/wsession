@@ -30,7 +30,6 @@ open import IO.Primitive
 _>>_ : ∀ {a b} {A : Set a} {B : Set b} → IO A → IO B → IO B
 ioa >> iob = ioa >>= λ a → iob
 
-
 -- end compiler support
 
 variable
@@ -259,12 +258,12 @@ postulate
   primClose : Channel → IO ⊤
   primFork : IO ⊤ → IO ⊤
 
-data CPair : Set where
-  ⟨_,_⟩ : Channel → Channel → CPair
-{-# COMPILE GHC CPair = data UC.CPair (UC.CPair) #-}
+data Channel×Channel : Set where
+  ⟨_,_⟩ : Channel → Channel → Channel×Channel
+{-# COMPILE GHC Channel×Channel = data UC.CPair (UC.CPair) #-}
 
 postulate
-  newChan  : IO CPair
+  newChan  : IO Channel×Channel
 \end{code}
 \begin{code}[hide]
 {-# COMPILE GHC Channel = type UC.Channel #-}

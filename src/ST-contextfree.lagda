@@ -35,8 +35,9 @@ open import Function.Base using (case_of_; _∘_; _∘′_; const; constᵣ; id;
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; cong₂; trans; module ≡-Reasoning)
 
 open import IO.Base using (IO)
+open import Data.Unit.Polymorphic.Base using (⊤)
 
-open import Channels
+open import Channels IO ⊤
 
 pattern [_] x = x ∷ []
 pattern [_,_] x y = x ∷ y ∷ []
@@ -210,30 +211,3 @@ recvTree = LOOP $ CHOICE λ where
   zero → RECV (put ∘ Leaf)
   (suc zero) → CONTINUE zero ⨟[ Branch ] CONTINUE zero
 \end{code}}
-\begin{code}[hide]
-
-checkTree : IntTree → Fin 2
-checkTree (Leaf x) = zero
-checkTree (Branch t₁ t₂) = suc zero
-
-getLeaf : IntTree → ℤ
-getLeaf (Leaf x) = x
-getLeaf (Branch t t₁) = 0ℤ
-
-getBranch : IntTree → IntTree × IntTree
-getBranch (Leaf x) = ⟨ (Leaf 0ℤ) , (Leaf 0ℤ) ⟩
-getBranch (Branch t₁ t₂) = ⟨ t₁ , t₂ ⟩
-
-sendTree : Cmd zero IntTree (dual treep)
-sendTree = LOOP  $ SELECT (pure checkTree <*> get) λ where
-  zero → SEND (pure getLeaf <*> get)
-  (suc zero) → {!!} ⨟[ {!!} ] {!!}
-
-sendLeaf : ℤ → Cmd n ℤ (dual leafp)
-sendLeaf x = SEND (pure x)
-
-sendBranch : IntTree → IntTree → Cmd (suc n) ℤ (dual branchp)
-sendBranch t₁ t₂ = {!!}
-
-
-\end{code}

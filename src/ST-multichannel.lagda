@@ -74,7 +74,7 @@ locate-split{m}{suc n} (right sp) f
 -- session types
 
 data Type : Set where
-  nat int : Type
+  nat int bool : Type
 \end{code}
 \newcommand\multiSession{%
 \begin{code}
@@ -223,32 +223,33 @@ CheckDual0 M₁ M₂ = project zero M₁ ≡ dual (project zero M₂)
 \begin{code}[hide]
 
 variable
-  A′ A₁ A₂ : Set
+  B A′ A₁ A₂ : Set
   T : Type
 
 T⟦_⟧ : Type → Set
 T⟦ nat ⟧ = ℕ
 T⟦ int ⟧ = ℤ
+T⟦ bool ⟧ = Bool
 \end{code}
 \newcommand\multiCmd{%
 \begin{code}
-data Cmd (A : Set) : (n : ℕ) → MSession n → Set₁ where
-  CLOSE  : ∀ c → (A → A) → Cmd A n M → Cmd A (suc n) (close c M)
-  SEND   : ∀ c → (A → T⟦ T ⟧ × A) → Cmd A n M → Cmd A n (send c T M)
-  RECV   : ∀ c → (T⟦ T ⟧ → A → A) → Cmd A n M → Cmd A n (recv c T M)
-  SELECT : ∀ c → (causal : Causality c M₁ M₂) → (A → Bool × A)
-    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (select c M₁ M₂ causal)
+data Cmd (R A : Set) : (n : ℕ) → MSession n → Set₁ where
+  CLOSE  : ∀ c → (A → B) → Cmd R B n M → Cmd R A (suc n) (close c M)
+  SEND   : ∀ c → (A → T⟦ T ⟧ × B) → Cmd R B n M → Cmd R A n (send c T M)
+  RECV   : ∀ c → (T⟦ T ⟧ → A → B) → Cmd R B n M → Cmd R A n (recv c T M)
+  SELECT : ∀ {F} c → (causal : Causality c M₁ M₂) → (A → Σ Bool F)
+    → Cmd R (F true) n M₁ → Cmd R (F false) n M₂ → Cmd R A n (select c M₁ M₂ causal)
   CHOICE : ∀ c → (causal : Causality c M₁ M₂)
-    → Cmd A n M₁ → Cmd A n M₂ → Cmd A n (choice c M₁ M₂ causal)
+    → Cmd R A n M₁ → Cmd R A n M₂ → Cmd R A n (choice c M₁ M₂ causal)
   CONNECT : ∀ {M₁ : MSession (suc m)} {M₂ : MSession (suc n)} (check : CheckDual0 M₁ M₂)
-    → (split : A → A × A)
+    → (split : A → A₁ × A₂)
     → (sp : Split m n)
-    → Cmd A (suc m) M₁ → Cmd A (suc n) M₂
-    → Cmd A (m + n) (connect sp M₁ M₂ check)
+    → Cmd R A₁ (suc m) M₁ → Cmd R A₂ (suc n) M₂
+    → Cmd R A (m + n) (connect sp M₁ M₂ check)
   SENDCH : ∀ {sj} → ∀ c j → (c≢j : c ≢ j)
-    → Cmd A n M → Cmd A (suc n) (delegateOUT c j c≢j sj M)
-  RECVCH : ∀ c → Cmd A (suc n) M → Cmd A n (delegateIN c M)
-  END    : Cmd A 0 terminate
+    → Cmd R A n M → Cmd R A (suc n) (delegateOUT c j c≢j sj M)
+  RECVCH : ∀ c → Cmd R A (suc n) M → Cmd R A n (delegateIN c M)
+  END    : (A → R) → Cmd R A 0 terminate
 \end{code}}
 \begin{code}[hide]
 postulate
@@ -275,7 +276,8 @@ postulate
 \end{code}
 \newcommand\multiExec{%
 \begin{code}
-exec : Cmd A n M → A → Vec Channel n → IO A
+variable R : Set
+exec : Cmd R A n M → A → Vec Channel n → IO R
 exec (SENDCH c j f≢j cmd) state chns = do
   primSend (lookup chns c) (lookup chns j)
   exec cmd state (remove chns j)
@@ -298,19 +300,22 @@ exec (RECV c putx cmds) state chns =
   primRecv (lookup chns c) >>= λ x →
   let state′ = putx x state in
   exec cmds state′ chns
-exec (SELECT c _ getx cmds₁ cmds₂) state chns = do
-  let ⟨ b , a ⟩ = getx state
-  primSend (lookup chns c) b
-  if b then (exec cmds₁ a chns)
-       else (exec cmds₂ a chns)
+exec (SELECT c _ getx cmds₁ cmds₂) state chns
+  with getx state
+... | ⟨ false , a ⟩ = do
+  primSend (lookup chns c) false
+  exec cmds₂ a chns
+... | ⟨ true , a ⟩ = do
+  primSend (lookup chns c) false
+  exec cmds₁ a chns
 exec (CHOICE c _ cmd₁ cmd₂) state chns = do
   b ← primRecv (lookup chns c)
   if b then exec cmd₁ state chns
        else exec cmd₂ state chns
-exec END state [] = do
-  pure state
+exec (END f) state [] = do
+  pure (f state)
 
-runCmd : Cmd A 0 M → A → IO A
+runCmd : Cmd R A 0 M → A → IO R
 runCmd cmd init = do
   exec cmd init []
 \end{code}}

@@ -36,14 +36,14 @@ client-p = send zero int (send zero int (recv zero bool (close zero terminate)))
 protocol : MSession 0
 protocol = connect null client-p server-p refl
 
-server : Cmd Bool ⊤ _ server-p
+server : Cmd Bool ⊤ 1 server-p
 server = RECV zero const $
          RECV zero _≤ᵇ_ $
          SEND zero return $
          CLOSE zero id $
          END (const false)
 
-client : Cmd Bool ⊤ _ client-p
+client : Cmd Bool ⊤ 1 client-p
 client = SEND zero (const (+ 42 , tt)) $
          SEND zero (const (+ 17 , tt)) $
          RECV zero const $

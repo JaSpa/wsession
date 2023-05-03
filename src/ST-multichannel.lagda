@@ -306,7 +306,7 @@ exec (SELECT c _ getx cmds₁ cmds₂) state chns
   primSend (lookup chns c) false
   exec cmds₂ a chns
 ... | ⟨ true , a ⟩ = do
-  primSend (lookup chns c) false
+  primSend (lookup chns c) true
   exec cmds₁ a chns
 exec (CHOICE c _ cmd₁ cmd₂) state chns = do
   b ← primRecv (lookup chns c)

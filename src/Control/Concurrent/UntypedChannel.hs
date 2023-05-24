@@ -5,8 +5,9 @@ module Control.Concurrent.UntypedChannel where
 import Unsafe.Coerce
 import Control.Concurrent.MVar (MVar, putMVar, takeMVar, newEmptyMVar)
 import qualified Control.Concurrent as Conc
+import GHC.Exts (Any)
 
-data Channel = Chan { sendOn :: MVar Integer, recvOn :: MVar Integer }
+data Channel = Chan { sendOn :: MVar Any, recvOn :: MVar Any }
 data CPair = CPair Channel Channel
 
 newChan :: IO CPair

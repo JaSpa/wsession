@@ -55,8 +55,8 @@ data Type : Set where
 data Session (n : ℕ) : Set where
   ⁇_ : Type → Session n
   ‼_ : Type → Session n
-  ⊕′ : (si : (i : Fin k) → Session n) → Session n
-  &′ : (si : (i : Fin k) → Session n) → Session n
+  ⊕′ : (Fin k → Session n) → Session n
+  &′ : (Fin k → Session n) → Session n
   _⨟_ : Session n → Session n → Session n
   skip : Session n
   μ_ : Session (suc n) → Session n
@@ -89,9 +89,9 @@ dual (` x) = ` x
 & = &′ ∘ vec→fin
 
 
-T⟦_⟧ : Type → Set
-T⟦ nat ⟧ = ℕ
-T⟦ int ⟧ = ℤ
+⟦_⟧ : Type → Set
+⟦ nat ⟧ = ℕ
+⟦ int ⟧ = ℤ
 
 \end{code}
 \newcommand\cstCmd{%
@@ -100,12 +100,12 @@ variable V W : Vec Set n
 
 data Cmd    : Set → Set → Vec Set n → Vec Set n → Session n → Set₁ where
   SKIP      : (A → B) → Cmd A B V W skip
-  SEND      : (A → B × T⟦ T ⟧) → Cmd A B V W (‼ T)
-  RECV      : (T⟦ T ⟧ → A → B) → Cmd A B V W (⁇ T)
-  SELECT    : ∀{Si} {F : Fin k → Set} → (A → Σ (Fin k) F)
-            → ((i : Fin k) → Cmd (F i) B V W (Si i))
-            → Cmd A B V W (⊕′ Si)
-  CHOICE    : ∀{Si} → ((i : Fin k) → Cmd A B V W (Si i)) → Cmd A B V W (&′ Si)
+  SEND      : (A → B × ⟦ T ⟧) → Cmd A B V W (‼ T)
+  RECV      : (⟦ T ⟧ → A → B) → Cmd A B V W (⁇ T)
+  SELECT    : ∀{Sᵢ} {F : Fin k → Set} → (A → Σ (Fin k) F)
+            → ((i : Fin k) → Cmd (F i) B V W (Sᵢ i))
+            → Cmd A B V W (⊕′ Sᵢ)
+  CHOICE    : ∀{Sᵢ} → ((i : Fin k) → Cmd A B V W (Sᵢ i)) → Cmd A B V W (&′ Sᵢ)
   [_]_⨟[_]_[_] : (A → A₁ × A′) → Cmd A₁ B₁ V W S₁
                → (A′ → B₁ → A₂) → Cmd A₂ B₂ V W S₂
                → (B₁ → B₂ → B) → Cmd A B V W (S₁ ⨟ S₂)
@@ -209,7 +209,7 @@ addp-command : Cmd ⊤ ⊤ V W binaryp
 addp-command = RECV const ⨟′ RECV _+_ ⨟′ SEND (λ x → ⟨ tt , x ⟩)
 
 negp-command : Cmd ⊤ ⊤ V W unaryp
-negp-command = RECV (const ∘′ -_) ⨟′ SEND λ x → ⟨ tt , x ⟩
+negp-command = RECV (const ∘′ -_) ⨟′ SEND (λ x → ⟨ tt , x ⟩)
 
 arithp-command : Cmd ⊤ ⊤ V W arithp
 arithp-command = CHOICE λ where

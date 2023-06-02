@@ -44,8 +44,8 @@ module formatting1 where
 \newcommand\rstBranchingType{%
 \begin{code}
   data Session (n : ℕ) : Set where
-    ⊕′ : (Si : (i : Fin k) → Session n) → Session n
-    &′ : (Si : (i : Fin k) → Session n) → Session n
+    ⊕′ : (Fin k → Session n) → Session n
+    &′ : (Fin k → Session n) → Session n
 \end{code}}
 \newcommand\rstSession{%
 \begin{code}
@@ -53,8 +53,8 @@ data Session (n : ℕ) : Set where
   ‼_∙_ : Type → Session n → Session n
   ⁇_∙_ : Type → Session n → Session n
   end : Session n
-  ⊕′ : (Si : (i : Fin k) → Session n) → Session n
-  &′ : (Si : (i : Fin k) → Session n) → Session n
+  ⊕′ : (Fin k → Session n) → Session n
+  &′ : (Fin k → Session n) → Session n
   μ_ : Session (suc n) → Session n
   `_ : Fin n → Session n
 \end{code}}
@@ -71,8 +71,8 @@ dual : Session n → Session n
 dual (send T S) = recv T (dual S)
 dual (recv T S) = send T (dual S)
 dual end = end
-dual (⊕′ Si) = &′ (dual ∘ Si)
-dual (&′ Si) = ⊕′ (dual ∘ Si)
+dual (⊕′ Sᵢ) = &′ (dual ∘ Sᵢ)
+dual (&′ Sᵢ) = ⊕′ (dual ∘ Sᵢ)
 dual (μ S) = μ (dual S)
 dual (` x) = ` x
 
@@ -116,13 +116,13 @@ variable
 \end{code}
 \newcommand\rstTypeInterpretation{%
 \begin{code}
-T⟦_⟧ : Type → Set
-T⟦ int ⟧ = ℤ
-T⟦ bool ⟧ = Bool
+⟦_⟧ : Type → Set
+⟦ int ⟧ = ℤ
+⟦ bool ⟧ = Bool
 \end{code}}
 \begin{code}[hide]
-T⟦ nat ⟧ = ℕ
-T⟦ fin k ⟧ = Fin k
+⟦ nat ⟧ = ℕ
+⟦ fin k ⟧ = Fin k
 
 module formatting2 where
 
@@ -149,10 +149,10 @@ data Cmd (n : ℕ) (A : Set) : Session n → Set where
 \end{code}}
 \begin{code}[hide]
   CLOSE  : Cmd n A end
-  SEND   : (A → A × T⟦ T ⟧) → Cmd n A S → Cmd n A (‼ T ∙ S)
-  RECV   : (T⟦ T ⟧ → A → A) → Cmd n A S → Cmd n A (⁇ T ∙ S)
-  SELECT : ∀ {Si} → (i : Fin k) → Cmd n A (Si i) → Cmd n A (⊕′ Si)
-  CHOICE : ∀ {Si} → ((i : Fin k) → Cmd n A (Si i)) → Cmd n A (&′ Si)
+  SEND   : (A → A × ⟦ T ⟧) → Cmd n A S → Cmd n A (‼ T ∙ S)
+  RECV   : (⟦ T ⟧ → A → A) → Cmd n A S → Cmd n A (⁇ T ∙ S)
+  SELECT : ∀ {Sᵢ} → (i : Fin k) → Cmd n A (Sᵢ i) → Cmd n A (⊕′ Sᵢ)
+  CHOICE : ∀ {Sᵢ} → ((i : Fin k) → Cmd n A (Sᵢ i)) → Cmd n A (&′ Sᵢ)
 \end{code}
 \newcommand\rstAddpCommand{%
 \begin{code}
@@ -179,31 +179,31 @@ postulate
   primSend   : A → Channel → IO ⊤
   primRecv   : Channel → IO A
 \end{code}}
-\newcommand\rstCommandStore{%
+\newcommand\rstCommandStack{%
 \begin{code}
-CmdStore : ℕ → Set → Set
-CmdStore n A = (i : Fin n) → ∃[ S ] (Cmd (toℕ (opposite i)) A S)
+CmdStack : ℕ → Set → Set
+CmdStack n A = (i : Fin n) → ∃[ S ] (Cmd (toℕ (opposite i)) A S)
 \end{code}}
 \newcommand\rstPops{%
 \begin{code}
-push : CmdStore n A → Cmd n A S → CmdStore (suc n) A
-pop1 : CmdStore (suc n) A → CmdStore n A
-pop  : CmdStore (suc n) A → (i : Fin (suc n)) → CmdStore (suc (toℕ (opposite i))) A
+push : CmdStack n A → Cmd n A S → CmdStack (suc n) A
+pop1 : CmdStack (suc n) A → CmdStack n A
+pop  : CmdStack (suc n) A → (i : Fin (suc n)) → CmdStack (suc (toℕ (opposite i))) A
 \end{code}}
 \begin{code}[hide]
-push {n}{S = S} cms cmd zero    rewrite toℕ-fromℕ n = ⟨ S , cmd ⟩
+push {n}{S = S} cms cmd zero rewrite toℕ-fromℕ n = ⟨ S , cmd ⟩
 push cms cmd (suc i) rewrite toℕ-inject₁ (opposite i) = cms i
 
 pop1 cms i with cms (suc i)
 ... | cms₁ rewrite toℕ-inject₁ (opposite i) = cms₁
 
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
-pop {suc n} cms (suc i) = subst (λ H → CmdStore (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
+pop {suc n} cms (suc i) = subst (λ H → CmdStack (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
 \end{code}
 \begin{code}[hide]
 module alternative-executor where
-  exec : Cmd n A S → CmdStore n A → (init : A) → Channel
-    → IO (∃[ n ] (CmdStore (suc n) A × A) ⊎ A)
+  exec : Cmd n A S → CmdStack n A → (init : A) → Channel
+    → IO (∃[ n ] (CmdStack (suc n) A × A) ⊎ A)
   exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
   exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
@@ -228,7 +228,7 @@ module alternative-executor where
 \newcommand\rstAlternativeExecutorRestart{%
 \begin{code}
   CmdCont : Set → Set
-  CmdCont A = ∃[ n ] (CmdStore (suc n) A × A)
+  CmdCont A = ∃[ n ] (CmdStack (suc n) A × A)
 
   restart : CmdCont A → Channel → IO (CmdCont A ⊎ A)
   restart ⟨ n , ⟨ cms , st ⟩ ⟩ ch
@@ -238,7 +238,7 @@ module alternative-executor where
 \newcommand\rstExecutorSignature{%
 \begin{code}
 Gas = ℕ
-exec : Gas → Cmd n A S → CmdStore n A → (init : A) → Channel → IO A
+exec : Gas → Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
 \end{code}}
 \begin{code}[hide]
 exec k CLOSE cms state ch = do
@@ -272,6 +272,11 @@ exec {suc n} {A} (suc g) (CONTINUE i) cms state ch
 exec g (UNROLL body-cmd next-cmd) cms st ch = exec g body-cmd (push cms next-cmd) st ch
 \end{code}}
 \newcommand\rstAcceptor{%
+\begin{code}
+runServer : Gas → Cmd 0 A S → A → IO A
+runServer k cmd a = primAccept >>= exec k cmd (λ()) a
+\end{code}}
+\newcommand\rstAcceptorOld{%
 \begin{code}
 record Accepting {n} A S : Set where
   constructor ACC

@@ -226,17 +226,17 @@ variable
   B A′ A₁ A₂ : Set
   T : Type
 
-T⟦_⟧ : Type → Set
-T⟦ nat ⟧ = ℕ
-T⟦ int ⟧ = ℤ
-T⟦ bool ⟧ = Bool
+⟦_⟧ : Type → Set
+⟦ nat ⟧ = ℕ
+⟦ int ⟧ = ℤ
+⟦ bool ⟧ = Bool
 \end{code}
 \newcommand\multiCmd{%
 \begin{code}
 data Cmd (R A : Set) : (n : ℕ) → MSession n → Set₁ where
   CLOSE  : ∀ c → (A → B) → Cmd R B n M → Cmd R A (suc n) (close c M)
-  SEND   : ∀ c → (A → T⟦ T ⟧ × B) → Cmd R B n M → Cmd R A n (send c T M)
-  RECV   : ∀ c → (T⟦ T ⟧ → A → B) → Cmd R B n M → Cmd R A n (recv c T M)
+  SEND   : ∀ c → (A → ⟦ T ⟧ × B) → Cmd R B n M → Cmd R A n (send c T M)
+  RECV   : ∀ c → (⟦ T ⟧ → A → B) → Cmd R B n M → Cmd R A n (recv c T M)
   SELECT : ∀ {F} c → (causal : Causality c M₁ M₂) → (A → Σ Bool F)
     → Cmd R (F true) n M₁ → Cmd R (F false) n M₂ → Cmd R A n (select c M₁ M₂ causal)
   CHOICE : ∀ c → (causal : Causality c M₁ M₂)

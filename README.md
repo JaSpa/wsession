@@ -4,14 +4,14 @@ A paper with this title is conditionally accepted at ICFP 2023 and
 what you have in your hands is the submitted version.
 This directory contains the artifact accompanying the paper.
 
-# Step-by-step Instructions
+## Step-by-step Instructions
 
 The first two steps are alternatives: either you start from the
 zipfile (step 1) or you use the provided vm image (step 2).
 After either step you should be in a directory called `src` and the
 remaining steps assume that you issue commands from that directory. 
 
-## 1 Using the zipfile
+### 1 Using the zipfile
 
 Prerequisites with suggested steps for debian Linux. In particular,
 step 2 will take quite a while to complete.
@@ -46,7 +46,7 @@ cd src
 unzip supplement-icfp23.zip
 ```
 
-## 2 Using the image
+### 2 Using the image
 
 * start the image and log in as the `artifact` user
 
@@ -54,7 +54,7 @@ unzip supplement-icfp23.zip
 cd wsession/src
 ```
 
-## 3 Type checking
+### 3 Type checking
 
 ```bash
 make type-check
@@ -85,7 +85,7 @@ versions of the session type library.
   section 7. This was done after submitting the paper and it will find
   its place in the final paper.
 
-## Running
+### Running
 
 There are two substeps: first compile the program and then run it.
 

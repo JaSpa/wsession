@@ -57,7 +57,7 @@ data Type : Set where
   nat int bool : Type
 
 data Session : Set where
-  ⊕′ &′ : ∀ {k} → (si : (i : Fin k) → Session) → Session
+  ⊕′ &′ : (Fin k → Session) → Session
   send recv : Type → Session → Session
   end : Session
 
@@ -98,10 +98,10 @@ variable
   S : Session
   M : Set a → Set b
 
-T⟦_⟧ : Type → Set
-T⟦ nat ⟧ = ℕ
-T⟦ bool ⟧ = Bool
-T⟦ int ⟧ = ℤ
+⟦_⟧ : Type → Set
+⟦ nat ⟧ = ℕ
+⟦ bool ⟧ = Bool
+⟦ int ⟧ = ℤ
 \end{code}
 \newcommand\mstMonadic{%
 \begin{code}
@@ -115,10 +115,10 @@ syntax Monadic (λ M → X) = Monad M ⇒ X
 data Cmd (A : Set) : Session → Set₂ where
   CLOSE  : Cmd A end
   SKIP   : (Monad M ⇒ StateT A M ⊤) → Cmd A S → Cmd A S
-  SEND   : (Monad M ⇒ StateT A M T⟦ T ⟧) → Cmd A S → Cmd A (send T S)
-  RECV   : (Monad M ⇒ (T⟦ T ⟧ → StateT A M ⊤)) → Cmd A S → Cmd A (recv T S)
-  SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
-  CHOICE : ∀ {Si} → ((i : Fin k) → Cmd A (Si i)) → Cmd A (&′ Si)
+  SEND   : (Monad M ⇒ StateT A M ⟦ T ⟧) → Cmd A S → Cmd A (send T S)
+  RECV   : (Monad M ⇒ (⟦ T ⟧ → StateT A M ⊤)) → Cmd A S → Cmd A (recv T S)
+  SELECT : ∀ {Sᵢ} → (i : Fin k) → Cmd A (Sᵢ i) → Cmd A (⊕′ Sᵢ)
+  CHOICE : ∀ {Sᵢ} → ((i : Fin k) → Cmd A (Sᵢ i)) → Cmd A (&′ Sᵢ)
 \end{code}}
 \newcommand\mstExampleServers{%
 \begin{code}

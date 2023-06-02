@@ -4,11 +4,11 @@ module ST-finite-nonbranching where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Integer using (ℤ; 0ℤ; _+_; -_)
+open import Data.Integer using (ℤ; 0ℤ; _+_; -_; _≤ᵇ_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; Σ; proj₁; proj₂; <_,_>) renaming (_,_ to ⟨_,_⟩)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Vec using (Vec; []; _∷_)
+open import Data.Vec using (Vec; []; _∷_; map)
 
 open import Data.Unit using (⊤; tt)
 
@@ -42,8 +42,8 @@ module formatting1 where
 \newcommand\stBranchingType{%
 \begin{code}
   data Session : Set where
-    ⊕′ : (Si : (i : Fin k) → Session) → Session
-    &′ : (Si : (i : Fin k) → Session) → Session
+    ⊕′ : (Fin k → Session) → Session
+    &′ : (Fin k → Session) → Session
 \end{code}}
 \newcommand\stFiniteSession{%
 \begin{code}
@@ -53,11 +53,11 @@ data Session : Set where
   end : Session
 \end{code}}
 \begin{code}[hide]
-  ⊕′ : ∀ {k} → (Si : (i : Fin k) → Session) → Session
-  &′ : ∀ {k} → (Si : (i : Fin k) → Session) → Session
+  ⊕′ : (Fin k → Session) → Session
+  &′ : (Fin k → Session) → Session
 \end{code}
 \begin{code}[hide]
-  sel chc : ∀{k} → Vec Session k → Session
+  sel chc : Vec Session k → Session
   select choice : Session → Session → Session
 
 pattern recv t s = ⁇ t ∙ s
@@ -77,6 +77,24 @@ binaryp : Session
 unaryp : Session 
 -- service protocol for choosing between a binary and a unary function
 arithp : Session
+\end{code}
+\begin{code}[hide]
+{-# TERMINATING #-}
+\end{code}
+\newcommand\stDuality{%
+\begin{code}
+dual : Session → Session
+dual (‼ T ∙ S) = ⁇ T ∙ dual S
+dual (⁇ T ∙ S) = ‼ T ∙ dual S
+dual end = end
+\end{code}}
+\begin{code}[hide]
+dual (⊕′ f) = &′ (dual ∘ f)
+dual (&′ f) = ⊕′ (dual ∘ f)
+dual (sel v) = chc (map dual v)
+dual (chc v) = sel (map dual v)
+dual (select S S₁) = choice (dual S) (dual S₁)
+dual (choice S S₁) = select (dual S) (dual S₁)
 \end{code}
 \newcommand\stExampleBinpUnP{%
 \begin{code}
@@ -103,17 +121,17 @@ module type-formatting where
 \end{code}
 \newcommand\stTypeInterpretationSignature{%
 \begin{code}[inline]
-    T⟦_⟧ : Type → Set
+    ⟦_⟧ : Type → Set
 \end{code}}
 \newcommand\stTypeInterpretation{%
 \begin{code}
-T⟦_⟧ : Type → Set
-T⟦ int ⟧ = ℤ
-T⟦ bool ⟧ = Bool
+⟦_⟧ : Type → Set
+⟦ int ⟧ = ℤ
+⟦ bool ⟧ = Bool
 \end{code}}
 \begin{code}[hide]
-T⟦ nat ⟧ = ℕ
-T⟦ fin k ⟧ = Fin k
+⟦ nat ⟧ = ℕ
+⟦ fin k ⟧ = Fin k
 
 module formatting2 where
 
@@ -121,25 +139,15 @@ module formatting2 where
 \newcommand\stBranchingCommand{%
 \begin{code}
   data Cmd (A : Set) : Session → Set where
-    SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
-    CHOICE : ∀ {Si} → ((i : Fin k) → Cmd A (Si i)) → Cmd A (&′ Si)
-\end{code}}
-\begin{code}[hide]
-module formatting-deselect where
-\end{code}
-\newcommand\stDynamicBranchingCommand{%
-\begin{code}
-  data Cmd (A : Set) : Session → Set where
-    DSELECT : ∀ {Si} → (getl : A → A × Fin k)
-                     → ((i : Fin k) → Cmd A (Si i))
-                     → Cmd A (⊕′ Si)
+    SELECT : ∀ {Sᵢ} → (i : Fin k) → Cmd A (Sᵢ i) → Cmd A (⊕′ Sᵢ)
+    CHOICE : ∀ {Sᵢ} → ((i : Fin k) → Cmd A (Sᵢ i)) → Cmd A (&′ Sᵢ)
 \end{code}}
 \newcommand\stCommand{%
 \begin{code}
 data Cmd (A : Set) : Session → Set where
   CLOSE  : Cmd A end
-  SEND   : (A → A × T⟦ T ⟧) → Cmd A S → Cmd A (‼ T ∙ S)
-  RECV   : (T⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
+  SEND   : (A → A × ⟦ T ⟧) → Cmd A S → Cmd A (‼ T ∙ S)
+  RECV   : (⟦ T ⟧ → A → A) → Cmd A S → Cmd A (⁇ T ∙ S)
 \end{code}}
 \begin{code}[hide]
   SELECT : ∀ {Si} → (i : Fin k) → Cmd A (Si i) → Cmd A (⊕′ Si)
@@ -148,8 +156,13 @@ data Cmd (A : Set) : Session → Set where
 \begin{code}[hide]
   SELECT2 : (A → Bool × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (select s₁ s₂)
   CHOICE2 : (Bool → A → ⊤ × A) → Cmd A s₁ → Cmd A s₂ → Cmd A (choice s₁ s₂)
-
 \end{code}
+\newcommand\stDynamicBranchingCommand{%
+\begin{code}
+  DSELECT : ∀ {Sᵢ} → (getl : A → A × Fin k)
+                   → ((i : Fin k) → Cmd A (Sᵢ i))
+                   → Cmd A (⊕′ Sᵢ)
+\end{code}}
 \newcommand\stAddpCommand{%
 \begin{code}
 addp-command : Cmd ℤ binaryp
@@ -176,6 +189,17 @@ arithp-command : Cmd ℤ arithp
 arithp-command = CHOICE λ where
   zero → addp-command
   (suc zero) → negp-command
+\end{code}}
+\newcommand\stArithpClient{%
+\begin{code}
+Bool→F2 : Bool → Fin 2
+Bool→F2 false = zero
+Bool→F2 true = suc zero
+
+arithp-client : Cmd ℤ (dual arithp)
+arithp-client = DSELECT (λ z → ⟨ z , Bool→F2 (z ≤ᵇ 0ℤ) ⟩) λ where
+  zero → SEND (λ z → ⟨ z , z ⟩) (SEND (λ z → ⟨ z , z ⟩) (RECV const CLOSE))
+  (suc zero) → SEND (λ z → ⟨ z , z ⟩) (RECV const CLOSE)
 \end{code}}
 \newcommand\stPostulates{%
 \begin{code}
@@ -215,6 +239,11 @@ exec (CHOICE cont) state ch = do
   exec (cont x) state ch
 \end{code}}
 \begin{code}[hide]
+exec (DSELECT getx cont) state ch = do
+  let ⟨ state′ , i ⟩ = getx state
+  primSend i ch
+  exec (cont i) state′ ch
+
 exec (SELECT2 getx cmd₁ cmd₂) state ch = do
   let ⟨ x , state′ ⟩ = getx state
   primSend {Bool} x ch
@@ -225,6 +254,11 @@ exec (CHOICE2 putx cmd₁ cmd₂) state ch = do
   (case x of (λ{ false → exec cmd₁ state′ ch ; true → exec cmd₂ state′ ch}))
 \end{code}
 \newcommand\stAcceptor{%
+\begin{code}
+runServer : Cmd A S → A → IO A
+runServer cmd a = primAccept >>= exec cmd a
+\end{code}}
+\newcommand\stAcceptorOld{%
 \begin{code}
 record Accepting A S : Set where
   constructor ACC
@@ -243,14 +277,14 @@ xclose state ch = do
   primClose ch
   pure state
 
-xsend : (A → A × T⟦ T ⟧) → XCmd A S → XCmd A (‼ T ∙ S)
+xsend : (A → A × ⟦ T ⟧) → XCmd A S → XCmd A (‼ T ∙ S)
 xsend f xcmd = λ state ch → do
   let ⟨ state′ , x ⟩ = f state
   primSend x ch
   xcmd state′ ch
 \end{code}}
 \begin{code}[hide]
-xrecv : (T⟦ T ⟧ → A → A) → XCmd A S → XCmd A (⁇ T ∙ S)
+xrecv : (⟦ T ⟧ → A → A) → XCmd A S → XCmd A (⁇ T ∙ S)
 xrecv f xcmd = λ state ch → do
   x ← primRecv ch
   let state′ = f x state
@@ -290,8 +324,8 @@ fffun true = 42
 
 data Cmd′ (A : Set) : Set → Session → Set₁ where
   CLOSE  : Cmd′ A A end
-  SEND   : (A → T⟦ T ⟧ × A′) → Cmd′ A′ A″ S → Cmd′ A A″ (send T S)
-  RECV   : (T⟦ T ⟧ → A → A′) → Cmd′ A′ A″ S → Cmd′ A A″ (recv T S)
+  SEND   : (A → ⟦ T ⟧ × A′) → Cmd′ A′ A″ S → Cmd′ A A″ (send T S)
+  RECV   : (⟦ T ⟧ → A → A′) → Cmd′ A′ A″ S → Cmd′ A A″ (recv T S)
   SELECT21 : (A → A₁ ⊎ A₂) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (select s₁ s₂)
   CHOICE21 : ((x : Bool) → A → (case x of λ{false → A₁; true → A₂})) → Cmd′ A₁ A″ s₁ → Cmd′ A₂ A″ s₂ → Cmd′ A A″ (choice s₁ s₂)
 

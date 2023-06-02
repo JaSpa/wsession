@@ -87,7 +87,7 @@ data Session (y : ℕ) : Set where
   transmit : (d : Direction) → Type    →  Session y → Session y
   delegate : (d : Direction) → Session y → Session y → Session y
   branch : (d : Direction) → Session y → Session y → Session y
-  mbranch : (d : Direction) → ((i : Fin k) → Session y) → Session y
+  mbranch : (d : Direction) → (Fin k → Session y) → Session y
   μ_ : Session (suc y) → Session y
   `_ : Fin y → Session y
   end : Session y
@@ -200,10 +200,10 @@ variable
   T : Type
   V : Vec Set y
 
-T⟦_⟧ : Type → Set
-T⟦ nat ⟧ = ℕ
-T⟦ int ⟧ = ℤ
-T⟦ bool ⟧ = Bool
+⟦_⟧ : Type → Set
+⟦ nat ⟧ = ℕ
+⟦ int ⟧ = ℤ
+⟦ bool ⟧ = Bool
 \end{code}
 -- R - final result type
 -- y - number of open recs
@@ -215,8 +215,8 @@ T⟦ bool ⟧ = Bool
 \begin{code}
 data Cmd {y : ℕ} (R : Set) : (A : Set) (V : Vec Set y) (n : ℕ) (Y : Vec ℕ y) → MSession Y n → Set₁ where
   CLOSE  : ∀ c → (A → B) → Cmd R B V n Y M → Cmd R A V (suc n) Y (close c M)
-  SEND   : ∀ c → (A → T⟦ T ⟧ × B) → Cmd R B V n Y M → Cmd R A V n Y (send c T M)
-  RECV   : ∀ c → (T⟦ T ⟧ → A → B) → Cmd R B V n Y M → Cmd R A V n Y (recv c T M)
+  SEND   : ∀ c → (A → ⟦ T ⟧ × B) → Cmd R B V n Y M → Cmd R A V n Y (send c T M)
+  RECV   : ∀ c → (⟦ T ⟧ → A → B) → Cmd R B V n Y M → Cmd R A V n Y (recv c T M)
   SELECT : ∀ {F} c → (causal : Causality c M₁ M₂) → (A → Σ Bool F)
     → Cmd R (F true) V n Y M₁ → Cmd R (F false) V n Y M₂ → Cmd R A V n Y (select c M₁ M₂ causal)
   CHOICE : ∀ c → (causal : Causality c M₁ M₂)

@@ -143,7 +143,7 @@ exec (RECV putx cmd) = ask >>= liftIO ∘ primRecv >>= putx >> exec cmd
 exec (SELECT i cmd)  = ask >>= liftIO ∘ primSend i >> exec cmd
 exec (CHOICE f-cmd)  = ask >>= liftIO ∘ primRecv >>= λ x → exec (f-cmd x)
 \end{code}}
-\newcommand\mstAcceptor{%
+\newcommand\mstAcceptorOld{%
 \begin{code}
 record Accepting A s : Set₂ where
   constructor ACC
@@ -151,6 +151,14 @@ record Accepting A s : Set₂ where
 
 acceptor : Accepting A s → A → IO A
 acceptor (ACC pgm) a = do
+  ch ← primAccept
+  ⟨ final , _ ⟩ ← runReaderT (runStateT (exec pgm) a) ch
+  pure final
+\end{code}}
+\newcommand\mstAcceptor{%
+\begin{code}
+runCmd : Cmd A s → A → IO A
+runCmd pgm a = do
   ch ← primAccept
   ⟨ final , _ ⟩ ← runReaderT (runStateT (exec pgm) a) ch
   pure final

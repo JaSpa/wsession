@@ -691,8 +691,8 @@ over and over again. Our running example will be a server that allows
 a client to repeatedly perform a unary operation until the client
 quits.
 
-The pen-and-paper syntax of recursive types relies on type variables
-and a $\mu$ operator like so:\footnote{We gloss over the issue of
+The pen-and-paper syntax of recursive types relies on type variables $X$
+and a $\mu$ operator:\footnote{We gloss over the issue of
   guardedness (or contractiveness) for recursive types to avoid further complexity in the
   types.}
 \begin{traditional}
@@ -826,42 +826,34 @@ identity functions) from $\AFin~n$ to $\AFin~(\Asuc~n)$.
 The execution of {\AMU} just pushes the loop onto the
 {\ACommandStack} and executes the body.
 The case for {\ACONTINUE~$i$} jumps to the selected loop and pops
-all intervening continuations from the store. It also reveals another complication. The recursive
+all intervening continuations from the store. This case reveals a complication. The recursive
 call to {\Aexecutor} happens on a command drawn from the {\ACommandStack}. This
 command is unrelated to the current command, which upsets Agda's
-termination checker. To console it we introduce a \AgdaFunction{Gas}
-argument, which we decrement at each {\ACONTINUE}.
+termination checker. To console it we mark the {\Aexecutor} function
+with a termination pragma.
+Using this pragma is a pragmatic choice as our intention is to
+actually run this code or use it as a blueprint for a Haskell implementation. 
 
-The question is, what to do if we run out of gas?
-There are at least three possibilities.
-\begin{enumerate}
-\item We regard the current formalization as a proof of concept and
-  refer the reader to a ``real'' implementation in Haskell, where the
-  \AgdaFunction{Gas} argument is not required. We see no
-  problem in creating such an implementation, but it would be more
-  involved as dependent types are not yet fully integrated in Haskell.
-\item We turn the bug into a feature and require that every
-  {\ACONTINUE} communicates with the other end of the channel to
-  exchange their respective gas levels and quit the loop if one end
-  runs out of gas. This choice implies that we would have to have a
-  continuation argument to  {\ACONTINUE} that acts like a
-  finally-clause for exception and finishes the protocol in an orderly
-  way.
-\item We can modify {\Aexecutor} so that it always takes a single step
-  and returns either a continuation and an intermediate state or a
-  final result of type $A$. This modification is straightforward in 
-  the setting with loops as a value \AgdaFunction{cms} of type {\ACommandStack~$(\Asuc~n)$~$A$}
-  can serve as a continuation. To restart a continuation, we simply invoke
-  {\Aexecutor} on \AgdaFunction{cms}~\Azero. For concreteness, we show
-  the continuation type and an implementation of the restart function.
-  \rstAlternativeExecutorRestart
-  With this approach, the management of {\Arestart}  has to be
-  included in the trusted computing base as it also has to guarantee linear treatment of
-  the channel.
-\end{enumerate}
-The current formalization leaves that question open and just breaks
-the protocol. Our preferred solution is a Haskell implementation,
-which omits the gas and thus sticks to the protocol.
+\subsection{What about proofs?}
+\label{sec:what-about-proofs}
+
+When it comes to proving linear handling of channels in the
+interpreter, we plan to introduce additional structure and modify
+{\Aexecutor} so that it always takes a single step 
+and returns either a continuation and an intermediate state or a
+final result of type $A$. This modification is straightforward in 
+the setting with loops as a value \AgdaFunction{cms} of type {\ACommandStack~$(\Asuc~n)$~$A$}
+can serve as a continuation. The only change in the code of
+{\Aexecutor} (besides the return type) is the case for {\ACONTINUE}, which
+returns a continuation.
+\rstAlternative
+To restart a continuation, we simply invoke
+{\Aexecutor} on \AgdaFunction{cms}~\Azero. 
+\rstAlternativeExecutorRestart
+With this approach, we can safely prove properties of {\Aexecutor}. To
+actually run the code, we still need a potentially nonterminating loop to repeatedly restart the
+continuation as shown below.
+\rstAlternativeExecutorHSRestart
 
 \section{Going monadic}
 \label{sec:going-monadic}

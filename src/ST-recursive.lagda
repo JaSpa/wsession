@@ -165,8 +165,8 @@ addp-command cmd = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a �
 addup-command : Cmd n ℤ S → Cmd n ℤ (unaryp S)
 addup-command cmd = RECV (λ x a → x + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
 
-runningsum-command : Cmd 0 ℤ many-unaryp
-runningsum-command = LOOP $ CHOICE λ where
+running-sum-command : Cmd 0 ℤ many-unaryp
+running-sum-command = LOOP $ CHOICE λ where
   zero → addup-command (CONTINUE zero)
   (suc zero) → CLOSE
 \end{code}}
@@ -200,13 +200,19 @@ pop1 cms i with cms (suc i)
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
 pop {suc n} cms (suc i) = subst (λ H → CmdStack (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
 \end{code}
-\begin{code}[hide]
+\newcommand\rstAlternative{%
+\begin{code}
 module alternative-executor where
+  CmdCont : Set → Set
+  CmdCont A = ∃[ n ] (CmdStack (suc n) A × A)
+
   exec : Cmd n A S → CmdStack n A → (init : A) → Channel
-    → IO (∃[ n ] (CmdStack (suc n) A × A) ⊎ A)
+    → IO (CmdCont A ⊎ A)
+  exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
+\end{code}}
+\begin{code}[hide]
   exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
   exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
-  exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
   exec CLOSE cms st ch = do
     primClose ch
     pure (inj₂ st)
@@ -227,54 +233,112 @@ module alternative-executor where
 \end{code}
 \newcommand\rstAlternativeExecutorRestart{%
 \begin{code}
-  CmdCont : Set → Set
-  CmdCont A = ∃[ n ] (CmdStack (suc n) A × A)
-
   restart : CmdCont A → Channel → IO (CmdCont A ⊎ A)
   restart ⟨ n , ⟨ cms , st ⟩ ⟩ ch
     with cms zero
   ... | ⟨ s₀ , cmd₀ ⟩ rewrite toℕ-fromℕ n = exec cmd₀ (pop1 cms) st ch
 \end{code}}
-\newcommand\rstExecutorSignature{%
+\newcommand\rstAlternativeExecutorHSRestart{%
 \begin{code}
-Gas = ℕ
-exec : Gas → Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
+  {-# TERMINATING #-}
+  restart* : CmdCont A → Channel → IO A
+  restart* k ch = restart k ch >>= λ where
+    (inj₁ k) → restart* k ch 
+    (inj₂ x) → pure x
+
+  exec' : Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
+  exec' c cms init ch = restart* ⟨ _ , ⟨ push cms c , init ⟩ ⟩ ch
+\end{code}}
+\newcommand\rstGasExecutorSignature{%
+\begin{code}
+module WithGas where
+  Gas = ℕ
+  exec : Gas → Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
 \end{code}}
 \begin{code}[hide]
-exec k CLOSE cms state ch = do
+  exec k CLOSE cms state ch = do
+    primClose ch
+    pure state
+  exec k (SEND getx cmd) cms state ch = do
+    let ⟨ state′ , x ⟩ = getx state
+    primSend x ch
+    exec k cmd cms state′ ch
+  exec k (RECV putx cmd) cms state ch = do
+    x ← primRecv ch
+    let state′ = putx x state
+    exec k cmd cms state′ ch
+  exec k (SELECT i cmd) cms state ch = do
+    primSend i ch
+    exec k cmd cms state ch
+  exec k (CHOICE f-cmd) cms state ch = do
+    x ← primRecv ch
+    exec k (f-cmd x) cms state ch
+\end{code}
+\newcommand\rstGasExecutor{%
+\begin{code}
+  exec g (LOOP cmd) cms state ch = exec g cmd (push cms (LOOP cmd)) state ch
+  exec {suc n} {A} zero (CONTINUE i) cms state ch = pure state -- hack alert!
+  exec {suc n} {A} (suc g) (CONTINUE i) cms state ch
+    with cms i
+  ... | ⟨ _ , cmd-i ⟩ = exec g cmd-i (pop1 (pop cms i)) state ch
+\end{code}}
+\newcommand\rstGasExecutorUNROLL{%
+\begin{code}
+  exec g (UNROLL body-cmd next-cmd) cms st ch = exec g body-cmd (push cms next-cmd) st ch
+\end{code}}
+\newcommand\rstGasAcceptor{%
+\begin{code}
+  runServer : Gas → Cmd 0 A S → A → IO A
+  runServer k cmd a = primAccept >>= exec k cmd (λ()) a
+\end{code}}
+\newcommand\rstGasAcceptorOld{%
+\begin{code}
+  record Accepting {n} A S : Set where
+    constructor ACC
+    field cmd : Cmd n A S
+
+  acceptor : {S : Session 0} → Gas → Accepting A S → A → IO A
+  acceptor k (ACC cmd) a = primAccept >>= exec k cmd (λ()) a
+\end{code}}
+\newcommand\rstExecutorSignature{%
+\begin{code}
+{-# TERMINATING #-}
+exec : Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
+\end{code}}
+\begin{code}[hide]
+exec CLOSE cms state ch = do
   primClose ch
   pure state
-exec k (SEND getx cmd) cms state ch = do
+exec (SEND getx cmd) cms state ch = do
   let ⟨ state′ , x ⟩ = getx state
   primSend x ch
-  exec k cmd cms state′ ch
-exec k (RECV putx cmd) cms state ch = do
+  exec cmd cms state′ ch
+exec (RECV putx cmd) cms state ch = do
   x ← primRecv ch
   let state′ = putx x state
-  exec k cmd cms state′ ch
-exec k (SELECT i cmd) cms state ch = do
+  exec cmd cms state′ ch
+exec (SELECT i cmd) cms state ch = do
   primSend i ch
-  exec k cmd cms state ch
-exec k (CHOICE f-cmd) cms state ch = do
+  exec cmd cms state ch
+exec (CHOICE f-cmd) cms state ch = do
   x ← primRecv ch
-  exec k (f-cmd x) cms state ch
+  exec (f-cmd x) cms state ch
 \end{code}
 \newcommand\rstExecutor{%
 \begin{code}
-exec g (LOOP cmd) cms state ch = exec g cmd (push cms (LOOP cmd)) state ch
-exec {suc n} {A} zero (CONTINUE i) cms state ch = pure state -- hack alert!
-exec {suc n} {A} (suc g) (CONTINUE i) cms state ch
+exec (LOOP cmd) cms state ch = exec cmd (push cms (LOOP cmd)) state ch
+exec {suc n} (CONTINUE i) cms state ch
   with cms i
-... | ⟨ _ , cmd-i ⟩ = exec g cmd-i (pop1 (pop cms i)) state ch
+... | ⟨ _ , cmd-i ⟩ = exec cmd-i (pop1 (pop cms i)) state ch
 \end{code}}
 \newcommand\rstExecutorUNROLL{%
 \begin{code}
-exec g (UNROLL body-cmd next-cmd) cms st ch = exec g body-cmd (push cms next-cmd) st ch
+exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
 \end{code}}
 \newcommand\rstAcceptor{%
 \begin{code}
-runServer : Gas → Cmd 0 A S → A → IO A
-runServer k cmd a = primAccept >>= exec k cmd (λ()) a
+runServer : Cmd 0 A S → A → IO A
+runServer cmd a = primAccept >>= exec cmd (λ()) a
 \end{code}}
 \newcommand\rstAcceptorOld{%
 \begin{code}
@@ -282,13 +346,13 @@ record Accepting {n} A S : Set where
   constructor ACC
   field cmd : Cmd n A S
 
-acceptor : {S : Session 0} → Gas → Accepting A S → A → IO A
-acceptor k (ACC cmd) a = primAccept >>= exec k cmd (λ()) a
+acceptor : {S : Session 0} → Accepting A S → A → IO A
+acceptor (ACC cmd) a = primAccept >>= exec cmd (λ()) a
 \end{code}}
 \newcommand\rstClientExample{%
 \begin{code}
-runningsum-client : Cmd 0 ⊤ (dual many-unaryp)
-runningsum-client =
+running-sum-client : Cmd 0 ⊤ (dual many-unaryp)
+running-sum-client =
   UNROLL (SELECT zero $ SEND (λ x → ⟨ tt , + 17 ⟩) $ RECV constᵣ (CONTINUE zero)) $
   UNROLL (SELECT zero $ SEND (λ x → ⟨ tt , + 4 ⟩)  $ RECV constᵣ (CONTINUE zero)) $
   LOOP (SELECT (suc zero) CLOSE)

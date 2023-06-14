@@ -274,10 +274,14 @@ postulate
 {-# COMPILE GHC primFork = UC.primFork #-}
 {-# COMPILE GHC newChan = UC.newChan #-}
 \end{code}
-\newcommand\multiExec{%
-\begin{code}
+\begin{code}[hide]
 variable R : Set
+\end{code}
+\newcommand\multiExecSignature{%
+\begin{code}
 exec : Cmd R A n M → A → Vec Channel n → IO R
+\end{code}}
+\begin{code}[hide]
 exec (SENDCH c j f≢j cmd) state chns = do
   primSend (lookup chns c) (lookup chns j)
   exec cmd state (remove chns j)

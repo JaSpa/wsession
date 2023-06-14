@@ -216,74 +216,53 @@ in concurrent programming systems. Each session type operator
 describes the direction of communication and the type of the
 payload (the transmitted value). Moreover, there are ways to specify
 control structures for protocols like sequencing, branching, and
-looping.
-
-Honda and others
-\cite{DBLP:conf/concur/Honda93,DBLP:conf/parle/TakeuchiHK94,DBLP:conf/esop/HondaVK98}
-started the investigation of session types originally in the context
-of the pi-calculus \cite{DBLP:journals/iandc/MilnerPW92a}. Later the concepts were adapted to other programming
-paradigms like functional programming
-\cite{DBLP:journals/tcs/VasconcelosGR06,DBLP:journals/jfp/GayV10} and
-object-oriented programming
-\cite{DBLP:conf/europar/RavaraV97,DBLP:journals/corr/abs-1205-5344}. 
-
-The early works concentrated on binary session types, i.e., protocols
-with two parties. Subsequently, multi-party session types were
-proposed \cite{DBLP:journals/jacm/HondaYC16} that relax the
-restriction to two parties. The Betty project resulted in several survey articles
-and books that provide a good overview of the field
-\cite{gay17:_behav_types,DBLP:journals/csur/HuttelLVCCDMPRT16,DBLP:journals/jlp/BartolettiCDDGP15,DBLP:journals/ftpl/AnconaBB0CDGGGH16}. 
-For this paper, we mostly focus the discussion on the binary case, but draw some
-inspiration from multi-party session types.
-
+looping \cite{DBLP:conf/concur/Honda93,DBLP:conf/parle/TakeuchiHK94,DBLP:conf/esop/HondaVK98}.
 
 Session types are inextricably connected to linear types via the
-Curry-Howard correspondence. This connection has been discovered and
-investigated in quite some depth
-\cite{DBLP:conf/concur/CairesP10,DBLP:journals/mscs/CairesPT16,DBLP:journals/jfp/Wadler14}
-along with many ramifications \cite{DBLP:journals/pacmpl/BalzerP17}. 
-Moreover, this connection is not just of theoretical interest, but it
+Curry-Howard correspondence
+\cite{DBLP:conf/concur/CairesP10,DBLP:journals/mscs/CairesPT16,DBLP:journals/jfp/Wadler14}. 
+This connection is not just of theoretical interest, but it
 has affected the implementation and (one could argue) hampered widespread
 adoption. Languages constructed around session types are usually
 special purpose languages that embrace linearity so that their type
-checker rejects violations thereof. Examples are plenty: Links \cite{lindley17:_light_funct_session_types},
-Sepi \cite{DBLP:conf/sefm/FrancoV13,DBLP:conf/sfm/Vasconcelos09}, Sill
-\cite{DBLP:conf/esop/ToninhoCP13}, C0
-\cite{DBLP:journals/corr/WillseyPP17}, and so on.
+checker rejects violations thereof.
 While these languages and their implementation have fostered research
 and encouraged experimentation, they are not widely used.
 
 To boost the use of session types, 
 a lot of work has been dedicated to embedding session types in mainstream
 languages, most of which do not have native support for linearity. 
-There are plenty of examples for such embeddings for functional languages
-like
-Haskell \cite{DBLP:conf/padl/NeubauerT04,SackmanE08,
-  DBLP:conf/haskell/PucellaT08} and
-OCaml \cite{DBLP:journals/jfp/Padovani17,DBLP:journals/scp/ImaiYY19},
-as well as object-oriented languages like
-C\# \cite{DBLP:journals/corr/abs-2004-01325},
-Scala \cite{DBLP:conf/ecoop/ScalasY16},
-Java \cite{DBLP:conf/ecoop/HuYH08}. Most of these approaches ignore
-the issue of linearity at compile time; some ignore it entirely. Some (e.g., \cite{DBLP:journals/jfp/Padovani17}) rely
-on run-time checks, others rely on encodings of linearity using lenses
-\cite{DBLP:journals/jip/ImaiG19} or monads \cite{DBLP:conf/haskell/PucellaT08}.
-There are also extension languages with a separate checker that add
-sessions \cite{DBLP:conf/coordination/NgYPHK11} or, more generally,
-typestate \cite{DBLP:journals/scp/KouzapasDPG18} to an underlying Java program.
-We comment on some recent implementation that rely on Rust in the
+There are many examples for such embeddings for functional
+and object-oriented languages, but
+% like
+% Haskell \cite{DBLP:conf/padl/NeubauerT04,SackmanE08,
+%   DBLP:conf/haskell/PucellaT08} and
+% OCaml \cite{DBLP:journals/jfp/Padovani17,DBLP:journals/scp/ImaiYY19},
+% as well as object-oriented languages like
+% C\# \cite{DBLP:journals/corr/abs-2004-01325},
+% Scala \cite{DBLP:conf/ecoop/ScalasY16},
+% Java \cite{DBLP:conf/ecoop/HuYH08}.
+most of them ignore the issue of linearity at compile time; some
+ignore it even at run time. We discuss them along with some promising
+recent embeddings in Rust in the
 related work (Section~\ref{sec:related-work}).
 
 Recent work on multi-party session types
 \cite{DBLP:conf/cc/Miu0Y021,DBLP:journals/pacmpl/00020HNY20} suggests
-an alternative approach that does not rely on linearity. It is
+an alternative approach for an embedding that neither requires support for
+linearity in the host language's type system nor run-time checks for
+linear use. It is 
 inspired by the design principle \emph{inversion of control} which is
-familiar to programmers from GUI programming. The systems described in
+familiar to GUI programmers and web programmers. The systems described in
 those works translate a description of a multi-party session type into
 a library that encapsulates the implementation of all
 communication. For each communication action, the library provides an
 interface where the programmer specifies a callback function for this
 particular action.
+
+In this paper we show that a functional programming language is
+amenable to elegantly embrace the callback style of defining the
+application logic of a program based on session types.
 
 We clarify this idea with a small example, continued and
 extended in Section~\ref{sec:finite-nonbr-simple}, using session types
@@ -304,7 +283,7 @@ a value of payload type $T$ and then continue as $S$. The session type
 $\Atend$ describes a channel that can only be closed.
 
 \begin{description}
-\item[Traditional setting] (cf.\ \cite{DBLP:journals/jfp/GayV10}) The
+\item[Traditional style] (cf.\ \cite{DBLP:journals/jfp/GayV10}) The
   traditional interface to session-typed communication consists of primitive
   operations like\footnote{The operators $\otimes$ and $\multimap$
     form the linear product (or tensor product) and the linear function space, respectively.}
@@ -340,7 +319,7 @@ otherwise, another \texttt{recv} could be applied could \texttt{c0},
 thus breaking the protocol.
 Analogous arguments apply to \texttt{c1} and \texttt{c2}, e.g., once
 the channel \texttt{c2} is closed, it cannot be closed again.
-\item[Callback approach] The callback interface to session-typed
+\item[Callback style] The callback interface to session-typed
   communication proposed in this work consists of two items. We
   introduce them in Agda notation, as our prototype is also
   implemented in Agda.
@@ -751,9 +730,8 @@ enables the specification of a command for one loop iteration at a time.
 The first command is good for the session type's loop body and the
 second command serves as a continutation for the whole type to cover subsequent
 iterations of the loop. 
-Executing the {\AUNROLL} command means to execute its body and push its
-continuation on the stack.
-\rstExecutorUNROLL
+
+%\rstExecutorUNROLL
 As an example, we write a client for the {\Amanyunaryp} protocol that
 iterates the protocol two times before it terminates. In each round,
 it sends an integer and ignores the response.
@@ -768,6 +746,8 @@ interpreter. Whenever execution enters a {\AMU} command, the entire
 loop is pushed on the stack. When we encounter a {\ACONTINUE~$i$}
 command, we grab the corresponding loop from the stack, pop the stack, and
 continue with the loop.
+Executing the {\AUNROLL} command means to execute its body and push its
+continuation for subsequent executions of the loop on the stack.
 
 \begin{figure}[tp]
   \begin{align*}
@@ -820,40 +800,42 @@ from the stack. The definitions are simple but omitted from the text
 as they require invoking some technical lemmas about injections (i.e.,
 identity functions) from $\AFin~n$ to $\AFin~(\Asuc~n)$.
 
-\rstExecutorSignature\vspace{-1.5\baselineskip}
-\rstExecutor
+The next issue we need to deal with is interpreting recursion. In the
+end, we have to accept that some part of the interpreter is
+nonterminating; that is, the interpretation of the {\ACONTINUE}
+command has to invoke the interpreter on the {\AMU} command from the
+stack. To contain the nonterminating part we modify the {\Aexecutor} function so
+that it returns either a continuation or a result. Here a continuation
+is a pair of the {\ACommandStack} and the application state.
+\rstAlternative
 
+We omit the commands that are implemented in the same way as in
+preceding sections, as we make use of the continuation only when dealing with recursion. 
 The execution of {\AMU} just pushes the loop onto the
 {\ACommandStack} and executes the body.
-The case for {\ACONTINUE~$i$} jumps to the selected loop and pops
-all intervening continuations from the store. This case reveals a complication. The recursive
-call to {\Aexecutor} happens on a command drawn from the {\ACommandStack}. This
-command is unrelated to the current command, which upsets Agda's
-termination checker. To console it we mark the {\Aexecutor} function
-with a termination pragma.
-Using this pragma is a pragmatic choice as our intention is to
-actually run this code or use it as a blueprint for a Haskell implementation. 
+The {\AUNROLL} command pushes the next loop iterations on the stack
+and executes the body.
+The case for {\ACONTINUE~$i$} wants to jump to the selected loop and pop
+all intervening continuations from the store. But this recursive
+call to {\Aexecutor} would happen on a command drawn from the
+{\ACommandStack}, which is unrelated to the current command.
+We introduced continuations to avoid this problem, so we just return
+the continuation.
 
-\subsection{What about proofs?}
-\label{sec:what-about-proofs}
-
-When it comes to proving linear handling of channels in the
-interpreter, we plan to introduce additional structure and modify
-{\Aexecutor} so that it always takes a single step 
-and returns either a continuation and an intermediate state or a
-final result of type $A$. This modification is straightforward in 
-the setting with loops as a value \AgdaFunction{cms} of type {\ACommandStack~$(\Asuc~n)$~$A$}
-can serve as a continuation. The only change in the code of
-{\Aexecutor} (besides the return type) is the case for {\ACONTINUE}, which
-returns a continuation.
-\rstAlternative
+With this setup, we can conduct proofs on the terminating {\Aexecutor}
+function. To actually run the code, we need some auxiliary functions
+to restart the continuation repeatedly.
 To restart a continuation, we simply invoke
 {\Aexecutor} on \AgdaFunction{cms}~\Azero. 
 \rstAlternativeExecutorRestart
-With this approach, we can safely prove properties of {\Aexecutor}. To
-actually run the code, we still need a potentially nonterminating loop to repeatedly restart the
-continuation as shown below.
+We still need a potentially nonterminating loop to repeatedly restart the
+continuation as shown below. This definition is marked with a
+termination pragma.
 \rstAlternativeExecutorHSRestart
+
+The final definition is the external entry point for running the
+interpreter. It has the same interface as interpreters from the
+preceding section.
 
 \section{Going monadic}
 \label{sec:going-monadic}
@@ -1171,7 +1153,14 @@ consequence that they are guaranteed to be free of deadlocks.
 
 The names of the channels are represented by
 de Bruijn indices. Unlike in other embedded implementations, a
-multichannel type covers the full choreography of a communicating
+multichannel type covers the full choreography\footnote{The word
+  choreography is not meant in the technical sense of choreographic
+  programming \cite{cruz-filipe23:_formal_theor_choreog_progr},
+  although it is certainly related. While choreographic programming is
+concerned with describing and implementing a multi-party protocol, a
+multichannel types give a view of a choreography from a single
+participant, i.e., a local type in the terminology of multi-party
+session types.} of a communicating
 application: connecting (forking) to a new process is combined with channel creation, branching and transmitting values as usual, closing a
 channel, delegation, and terminating the application after all
 protocols are finished and their respective channels closed.
@@ -1220,15 +1209,41 @@ that is removed from choreography. {\ACausality} and {\ACheckDual} are
 implemented using the obvious formulas.
 \multiProjection
 
-Given the preceding discussion as well as the discussion in previous
-sections, the types of commands follow directly.
+Building on the preceding discussion as well as the discussions from previous
+sections, the type of commands is given as $\ACommand~R~A~n~M$ where
+$R$ is the final, returned application state, $A$ is the initial
+application state, $n$ is the number of channels, and $M$ is the
+multichannel type indexing the command. The constructor parameter $c : \AFin~n$ is
+the channel name on which the command operates.
 
 \multiCmd
 
-Likewise, the interpreter {\Aexec} is an easy exercise.
+Likewise, the interpreter {\Aexec} is an easy exercise, so we only
+give its signature.
 
-\multiExec
+\multiExecSignature
+\input{latex/EX-multichannel}
 
+We conclude this section with a runnable program.
+\EXMbody
+The first few lines instruct the Agda compiler how to access Haskell's
+function {\AputStrLn} for printing on the console.
+The type {\Aserverp} is a multichannel session type to receive two integers on channel~0, send a boolean,
+close the channel, and quit. The type {\Aclientp} prescribes the ``dual''
+protocol (although, formally, there is no dual for multichannel types,
+only for projected single channel types). The type {\Aprotocol}
+describes the entire protocol that forks a new thread for the client
+protocol and runs the server protocol. The first argument {\Anull}
+indicates that there are no channels to pass to the new thread. The final argument {\Arefl} is
+the proof that the projected protocols are indeed dual.
+
+The {\Aserver} and {\Aclient} are constructed as commands indexed by
+{\Aserverp} and {\Aclientp}, respectively. Both transfer an initial
+application state of type $\top$ to a final state of type
+{\ABool}. The {\Asystem} command connects client  and server and
+distributes the initial state to both. The {\Amain} function is
+invoked by the operating system and essentially runs {\Asystem} on the
+only possible initial state {\Att}.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1318,15 +1333,46 @@ representing recursive and impure programs and  reasoning about them.
 \section{Related work}
 \label{sec:related-work}
 
-In this section, we review how different library implementations of
+Honda and others
+\cite{DBLP:conf/concur/Honda93,DBLP:conf/parle/TakeuchiHK94,DBLP:conf/esop/HondaVK98}
+started the investigation of session types originally in the context
+of the pi-calculus \cite{DBLP:journals/iandc/MilnerPW92a}. Later the concepts were adapted to other programming
+paradigms like functional programming
+\cite{DBLP:journals/tcs/VasconcelosGR06,DBLP:journals/jfp/GayV10} and
+object-oriented programming
+\cite{DBLP:conf/europar/RavaraV97,DBLP:journals/corr/abs-1205-5344}. 
+
+The early works concentrated on binary session types, i.e., protocols
+with two parties. Subsequently, multi-party session types were
+proposed \cite{DBLP:journals/jacm/HondaYC16} that relax the
+restriction to two parties. The Betty project resulted in several survey articles
+and books that provide a good overview of the field
+\cite{gay17:_behav_types,DBLP:journals/csur/HuttelLVCCDMPRT16,DBLP:journals/jlp/BartolettiCDDGP15,DBLP:journals/ftpl/AnconaBB0CDGGGH16}. 
+For this paper, we mostly focus the discussion on the binary case, but draw some
+inspiration from multi-party session types.
+
+
+
+In rest of this section, we review how different library implementations of
 session types deal with linearity. Specifically, we do not consider
 dedicated language implementations like
+C0 \cite{DBLP:journals/corr/WillseyPP17},
 SILL \cite{DBLP:conf/esop/ToninhoCP13},
 SEPI \cite{DBLP:conf/sefm/FrancoV13},
 FreeST \cite{DBLP:journals/iandc/AlmeidaMTV22},
 or Links \cite{lindley17:_light_funct_session_types}. These
 implementations come with dedicated type checkers that properly treat
 linearity at compile time.
+
+
+
+% Some (e.g., \cite{DBLP:journals/jfp/Padovani17}) rely
+% on run-time checks, others rely on encodings of linearity using lenses
+% \cite{DBLP:journals/jip/ImaiG19} or monads \cite{DBLP:conf/haskell/PucellaT08}.
+% There are also extension languages with a separate checker that add
+% sessions \cite{DBLP:conf/coordination/NgYPHK11} or, more generally,
+% typestate \cite{DBLP:journals/scp/KouzapasDPG18} to an underlying Java program.
+
 
 There are libraries with fully dynamic enforcement of a session type
 discipline

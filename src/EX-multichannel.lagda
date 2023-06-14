@@ -17,9 +17,10 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; resp₂)
 
 open import ST-multichannel
-
-postulate
-  putStrLn : String → IO ⊤
+\end{code}
+\newcommand\EXMbody{%
+\begin{code}
+postulate putStrLn : String → IO ⊤
 
 {-# FOREIGN GHC import qualified Data.Text.IO as Text #-}
 {-# COMPILE GHC putStrLn = Text.putStrLn #-}
@@ -37,18 +38,12 @@ protocol : MSession 0
 protocol = connect null client-p server-p refl
 
 server : Cmd Bool ⊤ 1 server-p
-server = RECV zero const $
-         RECV zero _≤ᵇ_ $
-         SEND zero return $
-         CLOSE zero id $
-         END (const false)
+server = RECV zero const $ RECV zero _≤ᵇ_ $ SEND zero return $
+         CLOSE zero id $ END (const false)
 
 client : Cmd Bool ⊤ 1 client-p
-client = SEND zero (const (+ 42 , tt)) $
-         SEND zero (const (+ 17 , tt)) $
-         RECV zero const $
-         CLOSE zero id $
-         END id
+client = SEND zero (const (+ 42 , tt)) $ SEND zero (const (+ 17 , tt)) $ RECV zero const $
+         CLOSE zero id $ END id
 
 system : Cmd Bool ⊤ 0 protocol
 system = CONNECT refl (λ x → x , x) null client server
@@ -58,4 +53,4 @@ main = do
   putStrLn "Multichannel session types in action!"
   b ← runCmd system tt
   putStrLn $ if b then "true" else "false" 
-\end{code}
+\end{code}}

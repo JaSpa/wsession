@@ -200,19 +200,20 @@ pop1 cms i with cms (suc i)
 pop {n} cms zero rewrite toℕ-fromℕ n = cms
 pop {suc n} cms (suc i) = subst (λ H → CmdStack (suc H) _) (sym (toℕ-inject₁ (opposite i))) (pop (pop1 cms) i)
 \end{code}
+\begin{code}[hide]
+module alternative-executor where
+\end{code}
 \newcommand\rstAlternative{%
 \begin{code}
-module alternative-executor where
   CmdCont : Set → Set
   CmdCont A = ∃[ n ] (CmdStack (suc n) A × A)
 
-  exec : Cmd n A S → CmdStack n A → (init : A) → Channel
-    → IO (CmdCont A ⊎ A)
+  exec : Cmd n A S → CmdStack n A → (init : A) → Channel → IO (CmdCont A ⊎ A)
+  exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
+  exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
 \end{code}}
 \begin{code}[hide]
-  exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
-  exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
   exec CLOSE cms st ch = do
     primClose ch
     pure (inj₂ st)
@@ -246,8 +247,8 @@ module alternative-executor where
     (inj₁ k) → restart* k ch 
     (inj₂ x) → pure x
 
-  exec' : Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
-  exec' c cms init ch = restart* ⟨ _ , ⟨ push cms c , init ⟩ ⟩ ch
+  exec′ : Cmd n A S → CmdStack n A → (init : A) → Channel → IO A
+  exec′ c cms init ch = restart* ⟨ _ , ⟨ push cms c , init ⟩ ⟩ ch
 \end{code}}
 \newcommand\rstGasExecutorSignature{%
 \begin{code}

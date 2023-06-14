@@ -1109,7 +1109,7 @@ Thus, we refrain from the monadic interface.
 
 \section{Handling multiple channels}
 \label{sec:handl-mult-chann}
-\input{latex/ST-multichannel.tex}
+\input{latex/ST-multichannel-finite-branching.tex}
 
 We have to amend some final elements to fully encompass traditional binary
 session types: a thread can open and manipulate many channels at a
@@ -1119,10 +1119,11 @@ now turn to lifting these restrictions.
 
 To concentrate on the new issues, 
 we start out by slightly rephrasing session types as we
-know them from Section~\ref{sec:select-choice}. In particular, we
-restrict to binary branching and leave the extension
-to finitary branching as well as the addition of recursion as an
-exercise to the reader. Generally, these types describe 
+know them from Section~\ref{sec:select-choice} and
+refer the reader to the artifact for the extension with
+recursion.\footnote{This extension does not require new insights
+  compared to Section~\ref{sec:going-circles}, but
+  adds significant clutter to the definitions.} Session types describe
 the communication on a single channel, as before. There are two novel
 aspects: we factorize the specification of the direction of
 communication and we add a special type for channel delegation, i.e.,
@@ -1137,12 +1138,17 @@ restrictions very similar to multiparty session types
 
 The following definition of its type  {\AMSession~n} is a bit tricky
 because it depends on two auxiliary functions {\ACausality} and
-{\ACheckDual} that depend on another auxiliary function {\Aproject},
+{\ACheckDual} that depend on an auxiliary projection function
+{$M\Downarrow c$}, 
 which itself depends on the {\AMSession} type. In such cases, Agda
 requires forward declarations of the types in front of the actual
-declarations of datatypes and functions. 
+declarations of datatypes and functions. The definition of
+{\ACausality} for a branch on $c$ requires that for all other channels $j\ne c$ the
+projections on $j$ are equal to the same $s$, for all continuations
+$M*$.
+{\ACheckDual} is defined with the obvious formula.
 
-\multiMSesson
+\multiMSessionSignature
 
 A multichannel session type {\AMSession~n}, ranged over by $M$, is indexed by the number $n$ of
 channels that it governs. Multichannel session types are loosely based on Wadler's GV
@@ -1164,6 +1170,8 @@ session types.} of a communicating
 application: connecting (forking) to a new process is combined with channel creation, branching and transmitting values as usual, closing a
 channel, delegation, and terminating the application after all
 protocols are finished and their respective channels closed.
+
+\multiMSession
 
 Each multichannel type, except {\ACconnect} and {\ACterminate}, takes a parameter
 $c$ that identifies the channel on which the command operates. 
@@ -1200,17 +1208,15 @@ and that the continuation command has one fewer channel.
 To receive a channel using {\ACdelegateIN} we just map it to address
 {\Azero} in the continuation session.
 
-The function {\Aproject} is similar to the projection from global
+The projection function $M \Downarrow c$ is similar to the projection from global
 types to local types in multiparty session types. We use
 auxiliary functions that manipulate de Bruijn indices:
 {\AlocateSplit~sp-c~c} determines the target thread of channel $c$ and
 its local index; {\Aadjust} changes the index to account for a channel
-that is removed from choreography. {\ACausality} and {\ACheckDual} are
-implemented using the obvious formulas.
+that is removed from choreography. 
 \multiProjection
 
-Building on the preceding discussion as well as the discussions from previous
-sections, the type of commands is given as $\ACommand~R~A~n~M$ where
+Building on the preceding discussion the type of commands is given as $\ACommand~R~A~n~M$ where
 $R$ is the final, returned application state, $A$ is the initial
 application state, $n$ is the number of channels, and $M$ is the
 multichannel type indexing the command. The constructor parameter $c : \AFin~n$ is
@@ -1218,8 +1224,8 @@ the channel name on which the command operates.
 
 \multiCmd
 
-Likewise, the interpreter {\Aexec} is an easy exercise, so we only
-give its signature.
+For space reasons we only give the signature of the interpreter
+{\Aexec}. The definition may be found in the artifact.
 
 \multiExecSignature
 \input{latex/EX-multichannel}

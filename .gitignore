@@ -13,3 +13,5 @@ latex/
 *.ptb
 *.rel
 *.synctex.gz
+_*
+*.zip

@@ -141,7 +141,7 @@ pop {suc n} {A ∷ V} {B ∷ W} cms (suc i) rewrite toℕ-inject₁ (opposite i)
 \end{code}
 \newcommand\cstExec{%
 \begin{code}
-exec : Cmd{n} A B V W S → CmdStore n V W → A → (ReaderT Channel IO) B
+exec : Cmd{n} A B V W S → CmdStore n V W → A → ReaderT Channel IO B
 exec (SKIP act) cms a = pure (act a)
 exec (SEND getx) cms a = do
   let ⟨ b , x ⟩ = getx a
@@ -242,7 +242,7 @@ treep = μ & [ leafp , branchp ]
 recvTree : Cmd ⊤ IntTree V W treep
 recvTree = LOOP $ CHOICE λ where
   zero → RECV (const ∘′ Leaf)
-  (suc zero) → [ (λ x → ⟨ x , x ⟩) ] (CONTINUE zero) ⨟[ const ] (CONTINUE zero) [ Branch ]
+  (suc zero) → [ (λ x → ⟨ x , x ⟩) ] CONTINUE zero ⨟[ const ] CONTINUE zero [ Branch ]
 \end{code}}
 \newcommand\cstSendTree{%
 \begin{code}
@@ -257,6 +257,6 @@ splitTree (Branch t₁ t₂) = ⟨ suc zero , ⟨ t₁ , t₂ ⟩ ⟩
 sendTree : Cmd IntTree ⊤ V W (dual treep)
 sendTree = LOOP $ SELECT splitTree λ where
   zero → SEND (λ z → ⟨ tt , z ⟩)
-  (suc zero) → [ id ] (CONTINUE zero) ⨟[ const ] (CONTINUE zero) [ const ]
+  (suc zero) → [ id ] CONTINUE zero ⨟[ const ] CONTINUE zero [ const ]
 \end{code}}
 

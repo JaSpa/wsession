@@ -1,4 +1,4 @@
-\documentclass[acmsmall,review,anonymous,screen]{acmart}
+\documentclass[acmsmall,screen]{acmart}
 \pdfoutput=1
 \usepackage{agda}
 \usepackage{stmaryrd}
@@ -247,14 +247,14 @@ ignore it even at run time. We discuss them along with some promising
 recent embeddings in Rust in the
 related work (Section~\ref{sec:related-work}).
 
-Recent work on multi-party session types
+Recent work on multiparty session types
 \cite{DBLP:conf/cc/Miu0Y021,DBLP:journals/pacmpl/00020HNY20} suggests
 an alternative approach for an embedding that neither requires support for
 linearity in the host language's type system nor run-time checks for
 linear use. It is 
 inspired by the design principle \emph{inversion of control} which is
 familiar to GUI programmers and web programmers. The systems described in
-those works translate a description of a multi-party session type into
+those works translate a description of a multiparty session type into
 a library that encapsulates the implementation of all
 communication. For each communication action, the library provides an
 interface where the programmer specifies a callback function for this
@@ -331,7 +331,7 @@ the channel \texttt{c2} is closed, it cannot be closed again.
     commands.
   \end{itemize}
 Next, we inspect these items in Agda notation. We liberally use the notation introduced in
-(\ref{eq:1}) for types and session
+the grammar (\ref{eq:1}) for types and session
 types. Section~\ref{sec:finite-nonbr-simple} provides the full definitions.
 \stCommand
 
@@ -410,7 +410,9 @@ types. Section~\ref{sec:finite-nonbr-simple} provides the full definitions.
 \end{itemize}
 
 The source of this document includes a number of literate Agda
-scripts which are available in the accompanying artifact. Every line
+scripts which are available in the accompanying artifact.\footnote{See
+also \url{https://github.com/peterthiemann/wsession} for the most
+recent version.} Every line 
 of code that is typeset in color has been checked by Agda. At present,
 the interpreters are implemented against a small API of monadic IO
 operations to manipulate untyped channels. This API has been
@@ -435,8 +437,8 @@ to Agda as they are encountered.
 \label{sec:finite-nonbr-simple}
 
 
-Let's start straight away with the simplest instance, finite
-non-branching simple session types, to convey the
+Let's start straight away with the simplest instance, traditional finite
+non-branching session types, to convey the
 gist of the approach. Subsequent sections show how to add most of the
 usual features of session types.
 
@@ -466,8 +468,8 @@ binary operation and a unary operation, respectively.
 \stExampleBinpUnP
 
 Duality for session types relates the type of the client end of a
-connection to the type of its server end. It is implemented in the usual way by flipping
-the direction of the communication.
+connection to the type of its server end. It is implemented by flipping
+the direction of all communications in a session.
 \stDuality
 
 In GV, a widely studied functional session type theory \cite{DBLP:journals/jfp/GayV10}, there are primitives to
@@ -498,7 +500,8 @@ it exactly once to calculate its result.
 In this work, we take a different approach inspired by callback
 programming. Instead of providing \texttt{send} and \texttt{recv} 
 primitives to the programmer, we ask the programmer to define the
-``application logic'' by implementing a command value whose type {\ACommand} is indexed by
+``application logic'' by implementing a command value whose type
+{\ACommand} is parameterized by the type of the application state and indexed by
 a session type. This definition relies on an interpretation of
 types as Agda types.
 \stTypeInterpretation
@@ -535,7 +538,7 @@ interpreter is the single definition where we are obliged to prove
 that it handles channels in a linear fashion. 
 
 The API in Figure~\ref{fig:channel-api} should be self-explanatory. It declares an abstract type of
-untyped, raw channels with operations to accept a connection, close a channel, as
+untyped, raw channels with monadic operations to accept a connection, close a channel, as
 well as send and receive a value over the channel. It glosses over issues like
 serialization, which can be addressed using type class constraints like
 {\ASerialize~$A$} (in Haskell) on {\AprimSend} and {\AprimRecv}.
@@ -562,7 +565,8 @@ Let us finish with some remarks on the structure of the callbacks. The
 callback for {\ACSEND} has the form $A \to A \times T$ --- a state
 transformer on $A$ returning a value of type $T$. The callback for
 {\ACRECV} has the form $T \to A \to A$, which looks different, but it
-is in fact isomorphic to a function that returns a state transformer:
+is in fact isomorphic to a function that returns a state transformer
+on $A$:
 $T \to (A \to A \times \Att)$. Thus, we could provide the
 application logic by actions in a state monad over the application
 state $A$.
@@ -615,7 +619,7 @@ modeled by the type $\AFin~k = \{ 0, \dots, k-1\}$ and the alternative continuat
 functions from labels to {\ASession} (isomorphic to vectors of sessions, cf.\  Section~\ref{sec:select-choice-with}).
 \stBranchingType
 \stBranchingCommand
-The commands for {\ACSELECT} and {\ACCHOICE} only differ in the
+The commands for {\ACSELECT} and {\ACCHOICE} differ only in the
 placement of the parentheses: {\ACSELECT} takes a label and a command
 corresponding to this label, whereas {\ACCHOICE} takes a function that
 maps a label to its command. Neither command requires the application
@@ -638,15 +642,15 @@ trick does not work for the {\ACommand} constructors {\ACSELECT} and
 generally return different types for different arguments.
 \stArithpCommand
 
-Finally, we observe that the proposed interface enables a more dynamic
-selection operator than in standard session types. While the standard
+Finally, we observe that the proposed interface enables a
+selection operator that is more dynamic than in standard session types. While the standard
 select operator is indexed by a label that is fixed at compile time,
 we can supply a dynamic selector command where the label is computed
 by a callback \AgdaFunction{getl} at run time:
 \stDynamicBranchingCommand
 Extending {\Aexecutor} to this command is straightforward.
-There is still room for improvement in the type of this command. We
-come back to this issue in Section~\ref{sec:context-free-session}.
+In Section~\ref{sec:context-free-session} we consider a further
+generalization of the typing for this command.
 
 As an example use, we consider a client for the arithmetic server that
 determines the operation at run time. Our client invokes addition if
@@ -666,9 +670,9 @@ computed function is $\lambda z \to \mathtt{if}\ z\le0\ \mathtt{then}\
 
 Recursive types are a common feature of session types. They are required
 to model protocols for servers that perform the same functionality
-over and over again. Our running example will be a server that allows
+over and over again. Our running example is a server that offers
 a client to repeatedly perform a unary operation until the client
-quits.
+chooses to quit.
 
 The pen-and-paper syntax of recursive types relies on type variables $X$
 and a $\mu$ operator:\footnote{We gloss over the issue of
@@ -691,7 +695,9 @@ using the standard de Bruijn encoding for bound variables. The parameter $n$ of
 the {\ASession} type denotes the number of type variables in
 scope. The {\Amu} operator opens a new scope and {\Aback~$i$}
 references the $i$th variable, with the variable {\Aback~$0$}
-referring to the innermost binding.
+referring to the innermost binding. A close look reveals that
+variables can only ever appear at the very end of a session, thus
+recursion is restricted to tail recursion.
 \rstSession
 
 Further extending our running example, we redefine the protocol {\Aunaryp} as a function
@@ -728,7 +734,7 @@ Hence, our implementation provides an {\AUNROLL} command that
 enables the specification of a command for one loop iteration at a time.
 \rstCommandUNROLL
 The first command is good for the session type's loop body and the
-second command serves as a continutation for the whole type to cover subsequent
+second command serves as a continuation for the whole type to cover subsequent
 iterations of the loop. 
 
 %\rstExecutorUNROLL
@@ -801,10 +807,10 @@ as they require invoking some technical lemmas about injections (i.e.,
 identity functions) from $\AFin~n$ to $\AFin~(\Asuc~n)$.
 
 The next issue we need to deal with is interpreting recursion. In the
-end, we have to accept that some part of the interpreter is
-nonterminating; that is, the interpretation of the {\ACONTINUE}
+end, we have to accept that some part of the interpreter may not always
+terminate; that is, the interpretation of the {\ACONTINUE}
 command has to invoke the interpreter on the {\AMU} command from the
-stack. To contain the nonterminating part we modify the {\Aexecutor} function so
+stack. To contain this part we modify the {\Aexecutor} function so
 that it returns either a continuation or a result. Here a continuation
 is a pair of the {\ACommandStack} and the application state.
 \rstAlternative
@@ -825,17 +831,17 @@ the continuation.
 With this setup, we can conduct proofs on the terminating {\Aexecutor}
 function. To actually run the code, we need some auxiliary functions
 to restart the continuation repeatedly.
-To restart a continuation, we simply invoke
+We restart a continuation by invoking
 {\Aexecutor} on \AgdaFunction{cms}~\Azero. 
 \rstAlternativeExecutorRestart
-We still need a potentially nonterminating loop to repeatedly restart the
+We still need a potentially non-terminating loop to repeatedly restart the
 continuation as shown below. This definition is marked with a
 termination pragma.
 \rstAlternativeExecutorHSRestart
 
 The final definition is the external entry point for running the
 interpreter. It has the same interface as interpreters from the
-preceding section.
+preceding sections.
 
 \section{Going monadic}
 \label{sec:going-monadic}
@@ -856,7 +862,7 @@ Second, we restate the types of the callbacks for {\ACSEND} and
 
 Here are the specifics of the types of the callbacks. Each callback
 runs in a state monad that handles the application state $A$ on top of
-another monad $M$. This construction is expressed in terms of the
+another (unspecified) monad $M$. This construction is expressed in terms of the
 monad transformer {\AStateT} applied to the application state
 $A$ and the underlying monad $M$. The type of the callback does not give away more
 than that.
@@ -903,7 +909,7 @@ obligation of linear handling for the channel becomes even simpler in
 this monadic setting.
 
 We conclude this section with the definition of the monadic
-run function. It essentially invokes the runners of the reader and state
+run function. It invokes the runners of the reader and state
 monads and executes the underlying IO action.
 \mstAcceptor
 
@@ -946,7 +952,7 @@ implicit parameters in types.
 
 The {\ACommand} datatype has a few catches that require
 explanation.
-Now it has four type-related parameters on
+This incarnation has four type-related parameters on
 top of the session type and we need to make serious use of dependent
 typing beyond indexed datatypes. A command of type {$\ACommand~A~B~V~W~S$} is
 firstly an action that takes an input of type $A$, yields an output of
@@ -1003,7 +1009,7 @@ looking up the input and output type on the stacks at position $i$.
 
 
 
-Before we delve into the interpreter, let's take stock what we
+Before we delve into the interpreter, let's take stock of what we
 achieved by reviewing our old examples as well as a new one that
 demonstrates the additional expressivity of context-free sessions.
 \cstBinaryp
@@ -1163,9 +1169,9 @@ multichannel type covers the full choreography\footnote{The word
   choreography is not meant in the technical sense of choreographic
   programming \cite{cruz-filipe23:_formal_theor_choreog_progr},
   although it is certainly related. While choreographic programming is
-concerned with describing and implementing a multi-party protocol, a
-multichannel types give a view of a choreography from a single
-participant, i.e., a local type in the terminology of multi-party
+concerned with describing and implementing a multiparty protocol, a
+multichannel type gives a view of a choreography from a single
+participant, i.e., a local type in the terminology of multiparty
 session types.} of a communicating
 application: connecting (forking) to a new process is combined with channel creation, branching and transmitting values as usual, closing a
 channel, delegation, and terminating the application after all
@@ -1196,9 +1202,12 @@ parameter.
 Communication with the new thread is established by 
 creating a new channel, which is mapped to address {\Azero} in both
 threads. Moreover, the {\ACheckDual} predicate makes sure that the
-session types of the two ends of this channel are dual to one
-another.\footnote{We elide details about the {\ASplit} type as well as
+session types of the two ends of this channel are dual to one another.\footnote{We elide details about
   duality from the paper for space reasons. See the supplement.}
+
+A $\ASplit~m~n$ determines a distribution of a vector of $m+n$ items
+into a ``left'' vector of $m$ items and a ``right'' vector of $n$ items.
+\dataSplit
 
 The delegation types deal with sending (receiving) a channel over
 another channel. Their types are sufficiently different so as not to
@@ -1216,7 +1225,7 @@ its local index; {\Aadjust} changes the index to account for a channel
 that is removed from choreography. 
 \multiProjection
 
-Building on the preceding discussion the type of commands is given as $\ACommand~R~A~n~M$ where
+Building on the preceding discussion, the type of commands is given as $\ACommand~R~A~n~M$ where
 $R$ is the final, returned application state, $A$ is the initial
 application state, $n$ is the number of channels, and $M$ is the
 multichannel type indexing the command. The constructor parameter $c : \AFin~n$ is
@@ -1224,8 +1233,9 @@ the channel name on which the command operates.
 
 \multiCmd
 
-For space reasons we only give the signature of the interpreter
-{\Aexec}. The definition may be found in the artifact.
+We only give the signature of the interpreter
+{\Aexec}, as it is constructed along the lines of previous
+interpreters in this paper. See the artifact for the full definition.
 
 \multiExecSignature
 \input{latex/EX-multichannel}
@@ -1262,9 +1272,10 @@ but reverted to a non-monadic one in subsequent sections. While the
 monadic implementation of the interpreter is worthwhile and improves
 conciseness and readability, it is not clear whether there is a
 significant difference for the callbacks themselves.
-To be fair, the choice to revert to the non-monadic interface in
-Section~\ref{sec:context-free-session} was partially forced on us because the implementation of indexed functors in
-the standard library did not support level indexing in full generality.
+In addition, we ran into difficulties when constructing the material in
+Section~\ref{sec:context-free-session} as we were not able to overcome
+limitations regarding level indexing in the current implementation
+of indexed functors in the standard library.
 
 \subsection{Selection and choice with vectors}
 \label{sec:select-choice-with}
@@ -1301,7 +1312,7 @@ without sacrificing the advantages our approach. However, for program
 development the command-based approach is more attractive because 
 Agda's interactive programming model features autocompletion for
 datatypes (like {\ACommand}), but not for types like {\AXCommand}.
-Concretely, during development of a function body, the editor show a
+Concretely, during development of a function body, the editor shows a
 hole with a target type determined by the function's signature. If the
 type of the hole is a datatype, then Agda is able to automatically
 suggest and insert a suitable data constructor. For example, if the
@@ -1349,13 +1360,13 @@ object-oriented programming
 \cite{DBLP:conf/europar/RavaraV97,DBLP:journals/corr/abs-1205-5344}. 
 
 The early works concentrated on binary session types, i.e., protocols
-with two parties. Subsequently, multi-party session types were
+with two parties. Subsequently, multiparty session types were
 proposed \cite{DBLP:journals/jacm/HondaYC16} that relax the
 restriction to two parties. The Betty project resulted in several survey articles
 and books that provide a good overview of the field
 \cite{gay17:_behav_types,DBLP:journals/csur/HuttelLVCCDMPRT16,DBLP:journals/jlp/BartolettiCDDGP15,DBLP:journals/ftpl/AnconaBB0CDGGGH16}. 
 For this paper, we mostly focus the discussion on the binary case, but draw some
-inspiration from multi-party session types.
+inspiration from multiparty session types.
 
 
 
@@ -1433,7 +1444,7 @@ Their idea to specify application code in callbacks inspired the
 development reported in this paper. There are not many similarities
 beyond that: our work is on synchronous binary session types, whereas
 their system is for asynchronous multiparty session types; we are
-defining an embedded domain-specific langauge, whereas they rely on
+defining an embedded domain-specific language, whereas they rely on
 code generation; our callbacks are identified by position in the
 command, whereas their callbacks are specified by named interfaces.
 
@@ -1453,7 +1464,7 @@ channels. The monadic interface guarantees linearity.
 
 This approach leaves more freedom to the programmer than our proposal
 in Section~\ref{sec:handl-mult-chann}. While individual channel types
-are independent in their approach, our multi-channel session types
+are independent in their approach, our multichannel session types
 impose a choreography on all connections, which is closer in spirit to
 multiparty session types. 
 
@@ -1582,9 +1593,10 @@ explicit coercions).
 %% (and NOT an unnumbered section). This ensures the proper
 %% identification of the section in the article metadata, and the
 %% consistent spelling of the heading.
-% \begin{acks}
-% To Robert, for the bagels and explaining CMYK and color spaces.
-% \end{acks}
+\begin{acks}
+  Thanks to Janek Spaderna and Marius Weidner for useful feedback in
+  the early stages of this work.
+\end{acks}
 
 %%
 %% The next two lines define the bibliography style to be used, and

@@ -17,12 +17,7 @@ open import Function.Base using (case_of_; _∘_; const; _$_; id)
 open import IO
 
 open import Utils
-
-
-pattern [_] x = x ∷ []
-pattern [_,_] x y = x ∷ y ∷ []
-pattern [_,_,_] x y z = x ∷ y ∷ z ∷ []
-
+open import Channels IO ⊤
 
 variable
   n k : ℕ
@@ -201,15 +196,6 @@ arithp-client = DSELECT (λ z → ⟨ z , Bool→F2 (z ≤ᵇ 0ℤ) ⟩) λ wher
   zero → SEND (λ z → ⟨ z , z ⟩) (SEND (λ z → ⟨ z , z ⟩) (RECV const CLOSE))
   (suc zero) → SEND (λ z → ⟨ z , z ⟩) (RECV const CLOSE)
 \end{code}}
-\newcommand\stPostulates{%
-\begin{code}
-postulate
-  Channel : Set
-  primAccept : IO Channel         -- accept a connection, return a new channel
-  primClose  : Channel → IO ⊤     -- close a connection
-  primSend   : A → Channel → IO ⊤ -- send value of type A
-  primRecv   : Channel → IO A     -- receive value of type A
-\end{code}}
 \newcommand\stExecutorSignature{%
 \begin{code}
 exec : Cmd A S → A → Channel → IO A
@@ -304,23 +290,12 @@ xchoice f-xcont = λ state ch → do
 ----------------------------------------------------------------------
 -- a Σ type isomorphic to A₁ ⊎ A₂
 
-ifb : Set → Set → Bool → Set
+ifb : ∀{ℓ}{A : Set ℓ} → A → A → Bool → A
 ifb A₁ A₂ false = A₁
 ifb A₁ A₂ true = A₂
 
-zzfalse : Σ _ (ifb Bool ℕ)
-zzfalse = ⟨ false , false ⟩
-
-zztrue :  Σ _ (ifb Bool ℕ)
-zztrue =  ⟨ true , 42 ⟩
-
-fffun  : (x : Bool) → ifb Bool ℕ x
-fffun false = false
-fffun true = 42
-
 ΣB : Set → Set → Set
 ΣB A₁ A₂ = Σ _ (ifb A₁ A₂)
-
 
 data Cmd′ (A : Set) : Set → Session → Set₁ where
   CLOSE  : Cmd′ A A end

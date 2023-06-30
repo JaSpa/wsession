@@ -41,10 +41,6 @@ open import Channels IO ⊤
 
 open import Utils
 
-pattern [_] x = x ∷ []
-pattern [_,_] x y = x ∷ y ∷ []
-pattern [_,_,_] x y z = x ∷ y ∷ z ∷ []
-
 variable n k : ℕ
 
 data Type : Set where
@@ -70,7 +66,7 @@ infixr 50 μ_ `_
 
 variable T : Type
 variable S S₁ S₂ : Session n
-variable A₁ A₂ A′ B₁ B₂ : Set
+variable A B C A₁ A₂ A′ B₁ B₂ : Set
 
 dual : Session n → Session n
 dual (⁇ x) = ‼ x
@@ -200,7 +196,7 @@ arithp = & [ binaryp , unaryp ]
 
 -- many unary functions
 many-unaryp : Session n
-many-unaryp = μ (& [ unaryp ⨟ ` zero , skip ])
+many-unaryp = μ & [ unaryp ⨟ ` zero , skip ]
 \end{code}}
 %% servers
 \newcommand\cstCmdExamples{%

@@ -20,12 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 open import IO
 
 open import Utils
-
-
-pattern [_] x = x ∷ []
-pattern [_,_] x y = x ∷ y ∷ []
-pattern [_,_,_] x y z = x ∷ y ∷ z ∷ []
-
+open import Channels IO ⊤
 
 variable
   n k : ℕ
@@ -38,15 +33,7 @@ data Type : Set where
 \begin{code}[hide]
   nat : Type
   fin : ℕ → Type
-
-module formatting1 where
 \end{code}
-\newcommand\rstBranchingType{%
-\begin{code}
-  data Session (n : ℕ) : Set where
-    ⊕′ : (Fin k → Session n) → Session n
-    &′ : (Fin k → Session n) → Session n
-\end{code}}
 \newcommand\rstSession{%
 \begin{code}
 data Session (n : ℕ) : Set where
@@ -124,19 +111,7 @@ variable
 ⟦ nat ⟧ = ℕ
 ⟦ fin k ⟧ = Fin k
 
-module formatting2 where
-
 \end{code}
-\newcommand\rstBranchingCommand{%
-\begin{code}
-  -- data Cmd (A : Set) : Session n → Set where
-  --   SELECT : ∀ {si} → (setl : A → Fin k × A)
-  --                   → ((i : Fin k) → Cmd A (si i))
-  --                   → Cmd A (⊕ si)
-  --   CHOICE : ∀ {si} → (getl : Fin k → A → A)
-  --                   → ((i : Fin k) → Cmd A (si i))
-  --                   → Cmd A (& si)
-\end{code}}
 \newcommand\rstCommand{%
 \begin{code}
 data Cmd (n : ℕ) (A : Set) : Session n → Set where
@@ -158,7 +133,6 @@ data Cmd (n : ℕ) (A : Set) : Session n → Set where
 \begin{code}
 addp-command : Cmd n ℤ S → Cmd n ℤ (binaryp S)
 addp-command cmd = RECV (λ x a → x) $ RECV (λ y a → y + a) $ SEND (λ a → ⟨ a , a ⟩) $ cmd
-
 \end{code}}
 \newcommand\rstSumupCommand{%
 \begin{code}
@@ -169,15 +143,6 @@ running-sum-command : Cmd 0 ℤ many-unaryp
 running-sum-command = LOOP $ CHOICE λ where
   zero → addup-command (CONTINUE zero)
   (suc zero) → CLOSE
-\end{code}}
-\newcommand\rstPostulates{%
-\begin{code}
-postulate
-  Channel : Set
-  primAccept : IO Channel
-  primClose  : Channel → IO ⊤
-  primSend   : A → Channel → IO ⊤
-  primRecv   : Channel → IO A
 \end{code}}
 \newcommand\rstCommandStack{%
 \begin{code}

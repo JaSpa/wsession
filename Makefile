@@ -1,9 +1,10 @@
-ARTIFACT= README.md src/supplement-icfp23.zip
+include src/variables.mk
 
-.PHONY: all
+ARTIFACT= README.md $(addprefix src/, $(ZIPFILES))
 
-all:
-	cd src; $(MAKE) supplement-icfp23.zip
+.PHONY: artifact
+
+artifact:
 	$(MAKE) artifact-icfp23.zip
 
 artifact-icfp23.zip: Makefile $(ARTIFACT)

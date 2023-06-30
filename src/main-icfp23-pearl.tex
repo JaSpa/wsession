@@ -210,6 +210,7 @@ type-checked Agda code.
 \label{sec:introduction}
 
 \input{latex/ST-finite-nonbranching.tex}
+\input{latex/Channels.tex}
 
 Session types provide a type discipline for protocols
 in concurrent programming systems. Each session type operator
@@ -497,6 +498,9 @@ for soundness. The linear function space constructor ``$\multimap$''
 expresses the type of a function that consumes its argument and uses
 it exactly once to calculate its result.
 
+\subsection{Commands with callbacks}
+\label{sec:comm-with-callb}
+
 In this work, we take a different approach inspired by callback
 programming. Instead of providing \texttt{send} and \texttt{recv} 
 primitives to the programmer, we ask the programmer to define the
@@ -525,8 +529,11 @@ the respective values received from the channel.
 % standard library:
 % \stAddpCommandAlternative
 
+\subsection{Interpretation}
+\label{sec:interpretation-1}
+
 \begin{figure}[tp]
-\stPostulates  
+\postulateChannel
   \caption{Channel API. The type $\top$ is like
   Haskell's unit type with single element {\Att}}
   \label{fig:channel-api}
@@ -910,7 +917,9 @@ this monadic setting.
 
 We conclude this section with the definition of the monadic
 run function. It invokes the runners of the reader and state
-monads and executes the underlying IO action.
+monads and executes the underlying IO action. The argument
+{\ArawFunctorRIO} provides evidence that our monad stack is also a
+functor by implementing the functor's map.
 \mstAcceptor
 
 \section{Context-free session types}
@@ -941,6 +950,9 @@ The Agda encoding of this structure combines straightforwardly with
 the accumulated work of the previous
 Sections~\ref{sec:finite-nonbr-simple}-\ref{sec:going-circles}.
 \cstSession
+
+\subsection{Commands}
+\label{sec:commands-1}
 
 To concisely define the revised command structure, we explicitly invoke Agda's
 \AgdaKeyword{variable}-feature to introduce typed
@@ -1137,7 +1149,10 @@ sending or receiving a channel.
 
 \multiSession
 
-An actual multichannel session type describes the interleaved
+\subsection{Multichannel session types}
+\label{sec:mult-sess-types-1}
+
+A multichannel session type describes the interleaved
 communication on all channels at once. It comes with features and
 restrictions very similar to multiparty session types
 \cite{DBLP:journals/jacm/HondaYC16}.
@@ -1225,6 +1240,9 @@ its local index; {\Aadjust} changes the index to account for a channel
 that is removed from choreography. 
 \multiProjection
 
+\subsection{Multichannel commands}
+\label{sec:mult-comm}
+
 Building on the preceding discussion, the type of commands is given as $\ACommand~R~A~n~M$ where
 $R$ is the final, returned application state, $A$ is the initial
 application state, $n$ is the number of channels, and $M$ is the
@@ -1238,6 +1256,9 @@ We only give the signature of the interpreter
 interpreters in this paper. See the artifact for the full definition.
 
 \multiExecSignature
+
+\subsection{Multichannel action}
+\label{sec:multichannel-action}
 \input{latex/EX-multichannel}
 
 We conclude this section with a runnable program.
@@ -1594,7 +1615,7 @@ explicit coercions).
 %% identification of the section in the article metadata, and the
 %% consistent spelling of the heading.
 \begin{acks}
-  Thanks to Janek Spaderna and Marius Weidner for useful feedback in
+  Thanks to Hannes Saffrich, Janek Spaderna, and Marius Weidner for useful feedback in
   the early stages of this work.
 \end{acks}
 

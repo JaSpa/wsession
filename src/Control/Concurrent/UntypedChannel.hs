@@ -7,7 +7,9 @@ import Control.Concurrent.MVar (MVar, putMVar, takeMVar, newEmptyMVar)
 import qualified Control.Concurrent as Conc
 import GHC.Exts (Any)
 
+type ChannelWrapper a b c = Channel
 data Channel = Chan { sendOn :: MVar Any, recvOn :: MVar Any }
+type CPairWrapper a b c = CPair
 data CPair = CPair Channel Channel
 
 newChan :: IO CPair

@@ -1,7 +1,6 @@
 # Intrinsically Typed Sessions With Callbacks
 
-A paper with this title is conditionally accepted at ICFP 2023 and
-what you have in your hands is the submitted version.
+A paper with this title is presented at ICFP 2023.
 This directory contains the artifact accompanying the paper.
 
 ## Step-by-step Instructions
@@ -19,12 +18,38 @@ step 2 will take quite a while to complete.
 1. make should be installed, e.g., by `apt-get install make`
 2. agda-2.6.3 should be installed. I followed these instructions to do
   so for the image: https://agda.readthedocs.io/en/v2.6.3/getting-started/installation.html
-3. clone the master branch of the agda standard library repository on github (https://github.com/agda/agda-stdlib)
-4. point agda to this version of the standard library, rather than the
-  default distributed with agda.
-  
-For step 4, assuming you cloned the
-standard library in the directory `/home/artifact` do this:
+
+The following robust procedure was pointed out by an anonymous reviewer.
+
+Clone the standard library at hash `<HASH>`. A working value for
+`<HASH>` is `4fe943`.
+
+Add `main.agda-lib` with the following contents:
+
+```
+include: .
+depend: standard-library-<HASH>
+```
+Hence, you have to clone like so:
+```bash
+$ git clone https://github.com/agda/agda-stdlib.git agda-stdlib-<HASH>
+$ cd agda-stdlib-<HASH>
+$ git reset --hard <HASH>
+$ mv standard-library.agda-lib standard-library-<HASH>.agda-lib
+$ sed -i "s/name: standard-library-.*$/name: standard-library-<HASH>/g" standard-library-<HASH>.agda-lib
+```
+
+If you are brave, you can clone the current `HEAD` of the master
+branch of the agda standard library repository on github
+(https://github.com/agda/agda-stdlib). You're on your own if something
+breaks. 
+
+
+In any case, point agda to this cloned version of the standard library, rather than the
+default distributed with agda.
+ To this end, assuming you cloned the
+standard library in the directory `/home/artifact` do this
+(potentially adding `-<HASH>`):
 ```bash
 cd
 mkdir .agda
@@ -38,12 +63,11 @@ To get agda in your executable path do this:
 export PATH=~/.cabal/bin:$PATH
 ```
 
-If you are here, you already unzipped the artifact, but there is a
-surprise waiting in the `src` directory:
+If you are here, you already unzipped the artifact. To prepare for
+type checking it remains to change to the `src` directory:
 
 ```bash
 cd src
-unzip supplement-icfp23.zip
 ```
 
 ### 2 Using the image
@@ -75,17 +99,23 @@ versions of the session type library.
   CHANNELS*
 * `ST-multichannel-finite-branching-recursion` is the extension of
   multichannel session types to finite branching and recursion that
-  is proposed as an exercise to the reader in section 7: _In
-  particular, we restrict to binary branching and leave the extension
+  was proposed as an exercise to the reader in section 7 of the
+  submitted version: _In particular, we restrict to binary branching and leave the extension
   to finitary branching as well as the addition of recursion as an
   exercise to the reader._ This was done on request of a reviewer and
-  a proper descripting will be incorporated in the final paper.
+  a proper description is included in the final paper.
 * `EX-multichannel.lagda` contains the main program for an actual
   executable that builds on top of the multichannel material in
-  section 7. This was done after submitting the paper and it will find
-  its place in the final paper.
+  section 7.
 
 ### Running
+
+Caution: the reviewers had issues with running the agda compiler,
+MAlonzo, in this step. It is known to work on several x86-based Linux
+boxes as well as on my Intel Core i9-based MacBook Pro. There were
+issues with M1-based Macs (even when running inside qemu): all files
+get compiled, but then the linker fails, one time with memory
+allocation and another time with a bad parameter to the linker.
 
 There are two substeps: first compile the program and then run it.
 

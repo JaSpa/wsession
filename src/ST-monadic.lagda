@@ -45,12 +45,14 @@ pattern [_,_,_] x y z = x ∷ y ∷ z ∷ []
 
 variable n k : ℕ
 
-postulate
-  Channel : Set
-  primAccept : IO Channel
-  primClose : Channel → IO {lzero} ⊤
-  primSend : ∀ {A : Set} → A → Channel → IO {lzero} ⊤
-  primRecv : ∀ {A : Set} → Channel → IO A
+open import Channels (IO {lzero}) ⊤
+
+-- postulate
+--   Channel : Set
+--   primAccept : IO Channel
+--   primClose : Channel → IO {lzero} ⊤
+--   primSend : ∀ {A : Set} → Channel → A → IO {lzero} ⊤
+--   primRecv : ∀ {A : Set} → Channel → IO A
 
 
 data Type : Set where
@@ -141,7 +143,7 @@ exec (SKIP act cmd)  = act >> exec cmd
 exec (SEND getx cmd) = getx >>= λ x → ask >>= liftIO ∘ primSend x >> exec cmd
 exec (RECV putx cmd) = ask >>= liftIO ∘ primRecv >>= putx >> exec cmd
 exec (SELECT i cmd)  = ask >>= liftIO ∘ primSend i >> exec cmd
-exec (CHOICE f-cmd)  = ask >>= liftIO ∘ primRecv >>= λ x → exec (f-cmd x)
+exec (CHOICE f-cmd)  = ask >>= liftIO ∘ primRecv >>= exec ∘ f-cmd
 \end{code}}
 \newcommand\mstAcceptorOld{%
 \begin{code}
@@ -155,11 +157,16 @@ acceptor (ACC pgm) a = do
   ⟨ final , _ ⟩ ← runReaderT (runStateT (exec pgm) a) ch
   pure final
 \end{code}}
+\begin{code}[hide]
+rawFunctorIO : ∀{ℓ} → RawFunctor{ℓ} IO
+rawFunctorIO = record { _<$>_ = λ f ioa → ioa >>= λ a → pure (f a) }
+
+rawFunctorRIO : ∀ {ℓ}{A : Set ℓ} → RawFunctor (ReaderT A IO)
+rawFunctorRIO = Reader.functor rawFunctorIO
+\end{code}
 \newcommand\mstAcceptor{%
 \begin{code}
 runCmd : Cmd A s → A → IO A
-runCmd pgm a = do
-  ch ← primAccept
-  ⟨ final , _ ⟩ ← runReaderT (runStateT (exec pgm) a) ch
-  pure final
+runCmd pgm a = 
+  primAccept >>= runReaderT (execStateT rawFunctorRIO (exec pgm) a)
 \end{code}}

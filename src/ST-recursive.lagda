@@ -20,19 +20,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 open import IO
 
 open import Utils
+open import Types
 open import Channels IO ⊤
 
 variable
   n k : ℕ
-\end{code}
-\newcommand\rstFiniteType{%
-\begin{code}
-data Type : Set where
-  int bool : Type
-\end{code}}
-\begin{code}[hide]
-  nat : Type
-  fin : ℕ → Type
 \end{code}
 \newcommand\rstSession{%
 \begin{code}
@@ -98,19 +90,7 @@ arithp-raw S = &′ {k = 2} (λ{ zero → binaryp S ; (suc zero) → unaryp S})
 
 variable
   A A′ A″ A₁ A₂ : Set
-  T t : Type
   S s s₁ s₂ : Session n
-\end{code}
-\newcommand\rstTypeInterpretation{%
-\begin{code}
-⟦_⟧ : Type → Set
-⟦ int ⟧ = ℤ
-⟦ bool ⟧ = Bool
-\end{code}}
-\begin{code}[hide]
-⟦ nat ⟧ = ℕ
-⟦ fin k ⟧ = Fin k
-
 \end{code}
 \newcommand\rstCommand{%
 \begin{code}

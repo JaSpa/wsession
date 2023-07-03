@@ -32,10 +32,13 @@ ioa >> iob = ioa >>= λ a → iob
 
 -- end compiler support
 
+open import Types
+
 variable
   m n o : ℕ
   f : Fin (suc n)
   A : Set
+  B A′ A₁ A₂ : Set
 
 -- splitting
 
@@ -73,8 +76,6 @@ locate-split{m}{suc n} (right sp) f
 
 -- session types
 
-data Type : Set where
-  nat int bool : Type
 \end{code}
 \newcommand\multiSession{%
 \begin{code}
@@ -128,25 +129,6 @@ adjust{suc n} (suc f) (suc x) f≢x
 
 -- duality
 
-{-
-is-dual : Session → Session → Set
-is-dual (branch INP s₁ s₂) (branch INP s₃ s₄) = ⊥
-is-dual (branch INP s₁ s₂) (branch OUT s₃ s₄) = is-dual s₁ s₃ × is-dual s₂ s₄
-is-dual (branch OUT s₁ s₂) (branch INP s₃ s₄) = is-dual s₁ s₃ × is-dual s₂ s₄
-is-dual (branch OUT s₁ s₂) (branch OUT s₃ s₄) = ⊥
-is-dual (branch x s₁ s₂) (transmit x₁ x₂ s₃) = ⊥
-is-dual (branch x s₁ s₂) end = ⊥
-is-dual (transmit x x₁ s₁) (branch x₂ s₂ s₃) = ⊥
-is-dual (transmit INP x₁ s₁) (transmit INP x₃ s₂) = ⊥
-is-dual (transmit INP nat s₁) (transmit OUT nat s₂) = is-dual s₁ s₂
-is-dual (transmit OUT nat s₁) (transmit INP nat s₂) = is-dual s₁ s₂
-is-dual (transmit OUT nat s₁) (transmit OUT nat s₂) = ⊥
-is-dual (transmit x x₁ s₁) end = ⊥
-is-dual end (branch x s₂ s₃) = ⊥
-is-dual end (transmit x x₁ s₂) = ⊥
-is-dual end end = ⊤
--}
-
 dual-dir : Direction → Direction
 dual-dir INP = OUT
 dual-dir OUT = INP
@@ -157,40 +139,7 @@ dual (transmit d t s) = transmit (dual-dir d) t (dual s)
 dual (delegate d s₀ s) = delegate (dual-dir d) s₀ (dual s)
 dual end = end
 
-{-
-dual→is-dual : ∀ s₁ s₂ → dual s₁ ≡ s₂ → is-dual s₁ s₂
-dual→is-dual (branch INP s₁ s₂) (branch .(dual-dir INP) .(dual s₁) .(dual s₂)) refl = dual→is-dual s₁ (dual s₁) refl , dual→is-dual s₂ (dual s₂) refl
-dual→is-dual (branch OUT s₁ s₂) (branch .(dual-dir OUT) .(dual s₁) .(dual s₂)) refl = dual→is-dual s₁ (dual s₁) refl , dual→is-dual s₂ (dual s₂) refl
-dual→is-dual (branch d s₁ s₂) (transmit d₁ x s₃) ()
-dual→is-dual (branch d s₁ s₂) end ()
-dual→is-dual (transmit d x s₁) (branch d₁ s₂ s₃) ()
-dual→is-dual (transmit INP nat s₁) (transmit .(dual-dir INP) .nat .(dual s₁)) refl = dual→is-dual s₁ (dual s₁) refl
-dual→is-dual (transmit OUT nat s₁) (transmit .(dual-dir OUT) .nat .(dual s₁)) refl = dual→is-dual s₁ (dual s₁) refl
-dual→is-dual (transmit d x s₁) end ()
-dual→is-dual end (branch d s₂ s₃) ()
-dual→is-dual end (transmit d x s₂) ()
-dual→is-dual end end refl = tt
-
-is-dual→dual : ∀ s₁ s₂ → is-dual s₁ s₂ → dual s₁ ≡ s₂
-is-dual→dual (branch INP s₁ s₂) (branch OUT s₃ s₄) (isd-s₁ , isd-s₂)
-  rewrite is-dual→dual s₁ s₃ isd-s₁
-  |  is-dual→dual s₂ s₄ isd-s₂ = refl
-is-dual→dual (branch OUT s₁ s₂) (branch INP s₃ s₄) (isd-s₁ , isd-s₂)
-  rewrite is-dual→dual s₁ s₃ isd-s₁
-  |  is-dual→dual s₂ s₄ isd-s₂ = refl
-is-dual→dual (branch INP s₁ s₂) (transmit INP nat s₃) ()
-is-dual→dual (branch INP s₁ s₂) (transmit OUT nat s₃) ()
-is-dual→dual (branch OUT s₁ s₂) (transmit INP nat s₃) ()
-is-dual→dual (branch OUT s₁ s₂) (transmit OUT nat s₃) ()
-is-dual→dual (branch INP s₁ s₂) end ()
-is-dual→dual (branch OUT s₁ s₂) end ()
-is-dual→dual (transmit INP nat s₁) (transmit OUT nat s₂) isd-s₁-s₂ rewrite is-dual→dual s₁ s₂ isd-s₁-s₂ = refl
-is-dual→dual (transmit OUT nat s₁) (transmit INP nat s₂) isd-s₁-s₂ rewrite is-dual→dual s₁ s₂ isd-s₁-s₂ = refl
-is-dual→dual end end isd-s₁-s₂ = refl
--}
-
 -- projection
-
 
 \end{code}
 \newcommand\multiProjection{%
@@ -220,17 +169,6 @@ project c (delegateIN x M) with c ≟ x
 Causality {n} i M₁ M₂ = ∀ (j : Fin n) → j ≢ i → project j M₁ ≡ project j M₂
 CheckDual0 M₁ M₂ = project zero M₁ ≡ dual (project zero M₂)
 \end{code}}
-\begin{code}[hide]
-
-variable
-  B A′ A₁ A₂ : Set
-  T : Type
-
-⟦_⟧ : Type → Set
-⟦ nat ⟧ = ℕ
-⟦ int ⟧ = ℤ
-⟦ bool ⟧ = Bool
-\end{code}
 \newcommand\multiCmd{%
 \begin{code}
 data Cmd (R A : Set) : (n : ℕ) → MSession n → Set₁ where

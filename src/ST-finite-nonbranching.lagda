@@ -17,22 +17,16 @@ open import Function.Base using (case_of_; _∘_; const; _$_; id)
 open import IO
 
 open import Utils
+open import Types
 open import Channels IO ⊤
 
 variable
   n k : ℕ
 \end{code}
-\newcommand\stFiniteType{%
-\begin{code}
-data Type : Set where
-  int : Type
-  bool : Type
-\end{code}}
 \begin{code}[hide]
-  nat : Type
-  fin : ℕ → Type
 
 module formatting1 where
+
 \end{code}
 \newcommand\stBranchingType{%
 \begin{code}
@@ -108,25 +102,7 @@ arithpv = chc (binaryp ∷ (unaryp ∷ []))
 
 variable
   A A′ A″ A₁ A₂ : Set
-  T t : Type
   S s s₁ s₂ : Session
-
-module type-formatting where
-  postulate
-\end{code}
-\newcommand\stTypeInterpretationSignature{%
-\begin{code}[inline]
-    ⟦_⟧ : Type → Set
-\end{code}}
-\newcommand\stTypeInterpretation{%
-\begin{code}
-⟦_⟧ : Type → Set
-⟦ int ⟧ = ℤ
-⟦ bool ⟧ = Bool
-\end{code}}
-\begin{code}[hide]
-⟦ nat ⟧ = ℕ
-⟦ fin k ⟧ = Fin k
 
 module formatting2 where
 

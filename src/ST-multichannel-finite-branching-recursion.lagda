@@ -34,6 +34,8 @@ ioa >> iob = ioa >>= λ a → iob
 
 -- end compiler support
 
+open import Types
+
 variable
   k m n o : ℕ
   f : Fin (suc n)
@@ -75,8 +77,6 @@ locate-split{m}{suc n} (right sp) f
 
 -- session types
 
-data Type : Set where
-  nat int bool : Type
 \end{code}
 \newcommand\multiSession{%
 \begin{code}
@@ -197,13 +197,8 @@ CheckDual0 M₁ M₂ = project zero M₁ ≡ dual (project zero M₂)
 
 variable
   B A′ A₁ A₂ R : Set
-  T : Type
   V : Vec Set y
 
-⟦_⟧ : Type → Set
-⟦ nat ⟧ = ℕ
-⟦ int ⟧ = ℤ
-⟦ bool ⟧ = Bool
 \end{code}
 -- R - final result type
 -- y - number of open recs

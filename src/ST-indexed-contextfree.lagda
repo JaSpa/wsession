@@ -40,11 +40,10 @@ open import Data.Unit.Polymorphic.Base using (⊤; tt)
 open import Channels IO ⊤
 
 open import Utils
+open import Types
 
 variable n k : ℕ
 
-data Type : Set where
-  nat int : Type
 \end{code}
 \newcommand\cstSession{%
 \begin{code}
@@ -64,7 +63,6 @@ infixr 30 _⨟_ [_]_⨟[_]_[_]
 infixl 40 ⁇_ ‼_
 infixr 50 μ_ `_
 
-variable T : Type
 variable S S₁ S₂ : Session n
 variable A B C A₁ A₂ A′ B₁ B₂ : Set
 
@@ -83,11 +81,6 @@ dual (` x) = ` x
 
 & : Vec (Session n) k → Session n
 & = &′ ∘ vec→fin
-
-
-⟦_⟧ : Type → Set
-⟦ nat ⟧ = ℕ
-⟦ int ⟧ = ℤ
 
 \end{code}
 \newcommand\cstCmd{%

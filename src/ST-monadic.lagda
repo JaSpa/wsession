@@ -54,9 +54,7 @@ open import Channels (IO {lzero}) ⊤
 --   primSend : ∀ {A : Set} → Channel → A → IO {lzero} ⊤
 --   primRecv : ∀ {A : Set} → Channel → IO A
 
-
-data Type : Set where
-  nat int bool : Type
+open import Types
 
 data Session : Set where
   ⊕′ &′ : (Fin k → Session) → Session
@@ -95,15 +93,9 @@ arithp = & [ binaryp , unaryp ]
 variable
   a b : Level
   A A′ A″ A₁ A₂ : Set
-  T : Type
   s s₁ s₂ : Session
   S : Session
   M : Set a → Set b
-
-⟦_⟧ : Type → Set
-⟦ nat ⟧ = ℕ
-⟦ bool ⟧ = Bool
-⟦ int ⟧ = ℤ
 \end{code}
 \newcommand\mstMonadic{%
 \begin{code}

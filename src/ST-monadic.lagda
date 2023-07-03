@@ -93,7 +93,6 @@ arithp = & [ binaryp , unaryp ]
 variable
   a b : Level
   A A′ A″ A₁ A₂ : Set
-  s s₁ s₂ : Session
   S : Session
   M : Set a → Set b
 \end{code}
@@ -143,7 +142,7 @@ record Accepting A s : Set₂ where
   constructor ACC
   field pgm : Cmd A s
 
-acceptor : Accepting A s → A → IO A
+acceptor : Accepting A S → A → IO A
 acceptor (ACC pgm) a = do
   ch ← primAccept
   ⟨ final , _ ⟩ ← runReaderT (runStateT (exec pgm) a) ch
@@ -158,7 +157,7 @@ rawFunctorRIO = Reader.functor rawFunctorIO
 \end{code}
 \newcommand\mstAcceptor{%
 \begin{code}
-runCmd : Cmd A s → A → IO A
+runCmd : Cmd A S → A → IO A
 runCmd pgm a = 
   primAccept >>= runReaderT (execStateT rawFunctorRIO (exec pgm) a)
 \end{code}}

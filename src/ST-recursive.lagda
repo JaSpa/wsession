@@ -90,7 +90,7 @@ arithp-raw S = &′ {k = 2} (λ{ zero → binaryp S ; (suc zero) → unaryp S})
 
 variable
   A A′ A″ A₁ A₂ : Set
-  S s s₁ s₂ : Session n
+  S : Session n
 \end{code}
 \newcommand\rstCommand{%
 \begin{code}

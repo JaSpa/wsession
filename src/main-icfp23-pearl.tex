@@ -150,7 +150,7 @@ obligation that can be discharged once and for all when the library is built.
 
 We demonstrate that our proposed design extends to a wide range of
 features of session type systems: branching, recursion, multichannel
-and higher-order session, as well as context-free sessions. The
+and higher-order sessions, as well as context-free sessions. The
 multichannel extension provides an embedded implementation of
 session types which guarantees deadlock freedom by construction.
 
@@ -302,7 +302,7 @@ $\Atend$ describes a channel that can only be closed.
     \end{align*}
   \end{traditional}
   that send on a channel, receive from a channel, and close a channel.
-  The crucial observation is that the type system must treat channels
+  It is crucial that the type system treats channels
   linearly to ensure protocol fidelity.
 
   Programs typically look like this:
@@ -317,7 +317,7 @@ negp-server  c0 =                    -- c0 : ?int.!int.end
 \end{lstlisting}
   \end{traditional}
 By linearity, the \texttt{recv} operation consumes \texttt{c0};
-otherwise, another \texttt{recv} could be applied could \texttt{c0},
+otherwise, another \texttt{recv} could be applied to \texttt{c0},
 thus breaking the protocol.
 Analogous arguments apply to \texttt{c1} and \texttt{c2}, e.g., once
 the channel \texttt{c2} is closed, it cannot be closed again.
@@ -475,7 +475,7 @@ the direction of all communications in a session.
 \stDuality
 
 In GV, a widely studied functional session type theory \cite{DBLP:journals/jfp/GayV10}, there are primitives to
-send and receive values and to close a channel with types like this:
+send and receive values and to close a channel with types like the following:
 \begin{traditional}
   \begin{align*}
     \mathtt{send} & : (\Atsend{T}{S} \otimes T) \multimap S &

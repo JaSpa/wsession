@@ -109,9 +109,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Intrinsically Typed Sessions with Callbacks}
-%\title{How to Embed Session Types Without Linearity}
-\subtitle{Functional Pearl}
+\title{Intrinsically Typed Sessions with Callbacks (Functional Pearl)}
 
 %%
 %% The "author" command and its associated commands are used to define
@@ -129,7 +127,7 @@
 \affiliation{%
   \institution{University of Freiburg}
   % \streetaddress{P.O. Box 1212}
-  % \city{Dublin}
+  \city{Freiburg}
   % \state{Ohio}
   \country{Germany}
   % \postcode{43017-6221}
@@ -282,7 +280,7 @@ a value of payload type $T$ and then continue as $S$. The session type
 $\Atend$ describes a channel that can only be closed.
 
 \begin{description}
-\item[Traditional style] (cf.\ \cite{DBLP:journals/jfp/GayV10}) The
+\item[Traditional Style] (cf.\ \cite{DBLP:journals/jfp/GayV10}) The
   traditional interface to session-typed communication consists of primitive
   operations like\footnote{The operators $\otimes$ and $\multimap$
     form the linear product (or tensor product) and the linear function space, respectively.}
@@ -318,7 +316,7 @@ otherwise, another \texttt{recv} could be applied to \texttt{c0},
 thus breaking the protocol.
 Analogous arguments apply to \texttt{c1} and \texttt{c2}, e.g., once
 the channel \texttt{c2} is closed, it cannot be closed again.
-\item[Callback style] The callback interface to session-typed
+\item[Callback Style] The callback interface to session-typed
   communication proposed in this work consists of two items. We
   introduce them in Agda notation, as our prototype is also
   implemented in Agda.
@@ -365,7 +363,7 @@ types. Section~\ref{sec:finite-nonbr-simple} provides the full definitions.
   implemented in few lines of code.
 \end{description}
 
-\subsection{Contributions}
+\subsection*{Contributions}
 \label{sec:contributions}
 
 \begin{itemize}
@@ -496,7 +494,7 @@ for soundness. The linear function space constructor ``$\multimap$''
 expresses the type of a function that consumes its argument and uses
 it exactly once to calculate its result.
 
-\subsection{Commands with callbacks}
+\subsection{Commands with Callbacks}
 \label{sec:comm-with-callb}
 
 In this work, we take a different approach inspired by callback
@@ -585,7 +583,7 @@ on structures provided by Agda's standard library.
 Our main narrative sidesteps that interface, as it is not sufficiently
 general for all extensions that we consider.
 
-\section{Selection and choice}
+\section{Selection and Choice}
 \label{sec:select-choice}
 
 Adding branching to our development is straightforward. The traditional 
@@ -669,7 +667,7 @@ is the function that selects between the two subprotocols. The
 computed function is $\lambda z \to \mathtt{if}\ z\le0\ \mathtt{then}\
 -z\ \mathtt{else}\ z+z$. 
 
-\section{Going in circles}
+\section{Going in Circles}
 \label{sec:going-circles}
 \input{latex/ST-recursive.tex}
 
@@ -727,7 +725,7 @@ service that repeatedly adds numbers as they are received and sends the partial
 sum as a response each time.
 \rstSumupCommand
 
-\subsection{What about the client?}
+\subsection{What About the Client?}
 \label{sec:what-about-client}
 
 The commands we presented so far for recursive sessions are fine for
@@ -848,7 +846,7 @@ The final definition is the external entry point for running the
 interpreter. It has the same interface as interpreters from the
 preceding sections.
 
-\section{Going monadic}
+\section{Going Monadic}
 \label{sec:going-monadic}
 \input{latex/ST-monadic.tex}
 
@@ -920,7 +918,7 @@ monads and executes the underlying IO action. The argument
 functor by implementing the functor's map.
 \mstAcceptor
 
-\section{Context-free session types}
+\section{Context-Free Session Types}
 \label{sec:context-free-session}
 \input{latex/ST-indexed-contextfree.tex}
 
@@ -1123,7 +1121,7 @@ the pattern of the reader monad at all.
 Thus, we refrain from the monadic interface.
 
 
-\section{Handling multiple channels}
+\section{Handling Multiple Channels}
 \label{sec:handl-mult-chann}
 \input{latex/ST-multichannel-finite-branching.tex}
 
@@ -1147,7 +1145,7 @@ sending or receiving a channel.
 
 \multiSession
 
-\subsection{Multichannel session types}
+\subsection{Multichannel Session Types}
 \label{sec:mult-sess-types-1}
 
 A multichannel session type describes the interleaved
@@ -1238,7 +1236,7 @@ its local index; {\Aadjust} changes the index to account for a channel
 that is removed from choreography. 
 \multiProjection
 
-\subsection{Multichannel commands}
+\subsection{Multichannel Commands}
 \label{sec:mult-comm}
 
 Building on the preceding discussion, the type of commands is given as $\ACommand~R~A~n~M$ where
@@ -1255,7 +1253,7 @@ interpreters in this paper. See the artifact for the full definition.
 
 \multiExecSignature
 
-\subsection{Multichannel action}
+\subsection{Multichannel Action}
 \label{sec:multichannel-action}
 \input{latex/EX-multichannel}
 
@@ -1283,7 +1281,7 @@ only possible initial state {\Att}.
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{To monad or not to monad}
+\subsection{To Monad or not to Monad}
 \label{sec:monad-or-not}
 
 We proposed a monadic callback interface in Section~\ref{sec:going-monadic},
@@ -1296,7 +1294,7 @@ Section~\ref{sec:context-free-session} as we were not able to overcome
 limitations regarding level indexing in the current implementation
 of indexed functors in the standard library.
 
-\subsection{Selection and choice with vectors}
+\subsection{Selection and Choice with Vectors}
 \label{sec:select-choice-with}
 
 The reader may wonder why we do not define the constructors for
@@ -1307,7 +1305,7 @@ continuation command depends on the function argument $i : \AFin~n$.
 We would have to define a special dependent vector type to achieve similar
 expressivity. 
 
-\subsection{Alternative representations}
+\subsection{Alternative Representations}
 \label{sec:code-generation}
 
 Instead of interpreting a command value, we could compile it to a
@@ -1341,7 +1339,7 @@ many cases. On the other hand, if the type of the hole is not a
 datatype (as with {\AXCommand}), then Agda
 immediately gives up without any suggestion. 
 
-\subsection{Multiparty session types}
+\subsection{Multiparty Session Types}
 \label{sec:mult-sess-types}
 
 We see no issues in extending the approach presented in this work to
@@ -1366,7 +1364,7 @@ conducted using interaction trees
 \cite{DBLP:journals/pacmpl/XiaZHHMPZ20}, a mechanized framework for
 representing recursive and impure programs and  reasoning about them.
 
-\section{Related work}
+\section{Related Work}
 \label{sec:related-work}
 
 Honda and others

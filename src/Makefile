@@ -13,7 +13,7 @@ $(ARXIVGOAL): $(GOAL).tex $(GOAL).bbl $(TARGET_FILES) acmart.cls agda.sty ACM-Re
 	zip $@ $^
 
 .PHONY: all type-check clean
-all: $(GOAL).pdf $(ZIPGOAL)
+all: $(GOAL).pdf $(ZIPGOAL) $(ARXIVGOAL)
 
 ### clean up
 

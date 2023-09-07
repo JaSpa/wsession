@@ -12,6 +12,10 @@ latex/
 *.out
 *.ptb
 *.rel
+*.nav
+*.snm
+*.toc
+*.vrb
 *.synctex.gz
 _*
 *.zip

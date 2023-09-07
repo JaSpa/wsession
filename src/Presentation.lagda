@@ -44,8 +44,8 @@ module the-monadic where
 \end{code}
 \newcommand\PresBinaryUnaryType{
 \begin{code}
-  S₁ = ⁇ int ∙ ‼ int ∙ end
-  S₂ = ‼ int ∙ ⁇ int ∙ end
+  S₁ = ⁇ int ∙ ‼ int ∙ end      -- server for unary function
+  S₂ = ‼ int ∙ ⁇ int ∙ end      -- its dual
 \end{code}}
 \newcommand\PresUnaryMonadic{
 \begin{code}

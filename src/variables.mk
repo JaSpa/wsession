@@ -1,6 +1,7 @@
 GOAL= main-icfp23-pearl
 TARGET_MODULES= ST-finite-nonbranching ST-recursive ST-monadic ST-indexed-contextfree ST-multichannel \
-	EX-multichannel ST-multichannel-finite-branching ST-multichannel-finite-branching-recursion Channels Utils Types
+	EX-multichannel ST-multichannel-finite-branching ST-multichannel-finite-branching-recursion \
+	Channels Utils Types Presentation
 TARGET_FILES= agdamacros.tex unicodeletters.tex $(addprefix $(PREFIX)/, $(addsuffix .tex, $(TARGET_MODULES)))
 PREFIX= latex
 

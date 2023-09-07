@@ -147,7 +147,7 @@ addp-command′ = RECV const $ RECV _+_ $ SEND < id , id > $ CLOSE
 \newcommand\stNegpCommand{%
 \begin{code}
 negp-command : Cmd ℤ (⁇ int ∙ ‼ int ∙ end)
-negp-command = RECV (λ x a → x) $ SEND (λ a → ⟨ a , - a ⟩) $ CLOSE
+negp-command = RECV (λ x a → - x) $ SEND (λ a → ⟨ a , a ⟩) $ CLOSE
 \end{code}}
 \newcommand\stNegpCommandAlternative{%
 \begin{code}

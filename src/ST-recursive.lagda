@@ -148,16 +148,21 @@ pop {suc n} cms (suc i) = subst (λ H → CmdStack (suc H) _) (sym (toℕ-inject
 \begin{code}[hide]
 module alternative-executor where
 \end{code}
-\newcommand\rstAlternative{%
+\newcommand\rstCmdCont{%
 \begin{code}
   CmdCont : Set → Set
   CmdCont A = ∃[ n ] (CmdStack (suc n) A × A)
-
+\end{code}}
+\newcommand\rstCmdContExec{%
+\begin{code}
   exec : Cmd n A S → CmdStack n A → (init : A) → Channel → IO (CmdCont A ⊎ A)
   exec (LOOP cmd) cms st ch = exec cmd (push cms (LOOP cmd)) st ch
   exec (UNROLL body-cmd next-cmd) cms st ch = exec body-cmd (push cms next-cmd) st ch
   exec {n = suc n} (CONTINUE i) cms st ch = pure (inj₁ ⟨ _ , ⟨ pop cms i , st ⟩ ⟩)
 \end{code}}
+\newcommand\rstAlternative{%
+  \rstCmdCont
+  \rstCmdContExec}
 \begin{code}[hide]
   exec CLOSE cms st ch = do
     primClose ch
